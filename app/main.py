@@ -103,6 +103,18 @@ CREATE TABLE IF NOT EXISTS media_tags (
     PRIMARY KEY (project_id, name, tag_id),
     FOREIGN KEY (project_id, name) REFERENCES media(project_id, name) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS media_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    x REAL,
+    y REAL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (project_id, name) REFERENCES media(project_id, name) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_media_notes_media ON media_notes(project_id, name);
 """
 
 
@@ -554,6 +566,10 @@ def project_state(slug: str, request: Request):
             "SELECT name, tag_id FROM media_tags WHERE project_id=?",
             (project["id"],),
         ).fetchall()
+        notes_rows = c.execute(
+            "SELECT id, name, text, x, y FROM media_notes WHERE project_id=? ORDER BY id",
+            (project["id"],),
+        ).fetchall()
         types = [
             dict(r)
             for r in c.execute(
@@ -575,9 +591,13 @@ def project_state(slug: str, request: Request):
     tags_by_media: dict[str, list[int]] = {}
     for r in mt:
         tags_by_media.setdefault(r["name"], []).append(r["tag_id"])
+    notes_by_media: dict[str, list[dict]] = {}
+    for n in notes_rows:
+        notes_by_media.setdefault(n["name"], []).append(dict(n))
     for r in rows:
         r["missing"] = r["name"] not in files
         r["tag_ids"] = tags_by_media.get(r["name"], [])
+        r["notes"] = notes_by_media.get(r["name"], [])
     granted = require_project_level(request, slug, "view")
     new_unplaced = [r for r in rows if r["status"] == "unplaced" and not r["missing"]]
     return {
@@ -792,6 +812,88 @@ def set_media_tags(slug: str, request: Request, payload: dict = Body(...)):
                     "INSERT OR IGNORE INTO media_tags(project_id, name, tag_id) VALUES(?, ?, ?)",
                     (project["id"], name, tid),
                 )
+        c.commit()
+    return {"ok": True}
+
+
+# ----------------------- notes -----------------------
+
+
+def _validate_xy(payload: dict) -> tuple[Optional[float], Optional[float]]:
+    """Return (x, y) as floats in [0, 1] or (None, None) if both absent/null."""
+    x = payload.get("x")
+    y = payload.get("y")
+    if x is None and y is None:
+        return None, None
+    try:
+        x = float(x)
+        y = float(y)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "x and y must be numbers")
+    if not (0 <= x <= 1 and 0 <= y <= 1):
+        raise HTTPException(400, "x and y must be in [0, 1]")
+    return x, y
+
+
+@app.post("/api/projects/{slug}/notes")
+def create_note(slug: str, request: Request, payload: dict = Body(...)):
+    project = project_for_request(slug, "edit", request)
+    name = payload.get("name")
+    text = (payload.get("text") or "").strip()
+    if not name or not text:
+        raise HTTPException(400, "name and text required")
+    x, y = _validate_xy(payload)
+    with db() as c:
+        owns = c.execute(
+            "SELECT 1 FROM media WHERE project_id=? AND name=?",
+            (project["id"], name),
+        ).fetchone()
+        if not owns:
+            raise HTTPException(404, "media unknown")
+        cur = c.execute(
+            "INSERT INTO media_notes(project_id, name, text, x, y) VALUES(?, ?, ?, ?, ?)",
+            (project["id"], name, text, x, y),
+        )
+        c.commit()
+        return {"id": cur.lastrowid}
+
+
+@app.patch("/api/projects/{slug}/notes/{note_id}")
+def update_note(slug: str, note_id: int, request: Request, payload: dict = Body(...)):
+    project = project_for_request(slug, "edit", request)
+    fields: dict = {}
+    if "text" in payload:
+        t = (payload.get("text") or "").strip()
+        if not t:
+            raise HTTPException(400, "text required")
+        fields["text"] = t
+    if "x" in payload or "y" in payload:
+        x, y = _validate_xy(payload)
+        fields["x"] = x
+        fields["y"] = y
+    if not fields:
+        return {"ok": True}
+    fields["updated_at"] = datetime.now().isoformat()
+    sets = ", ".join(f"{k}=?" for k in fields)
+    vals = list(fields.values()) + [note_id, project["id"]]
+    with db() as c:
+        cur = c.execute(
+            f"UPDATE media_notes SET {sets} WHERE id=? AND project_id=?", vals
+        )
+        c.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "note not found")
+    return {"ok": True}
+
+
+@app.delete("/api/projects/{slug}/notes/{note_id}")
+def delete_note(slug: str, note_id: int, request: Request):
+    project = project_for_request(slug, "edit", request)
+    with db() as c:
+        c.execute(
+            "DELETE FROM media_notes WHERE id=? AND project_id=?",
+            (note_id, project["id"]),
+        )
         c.commit()
     return {"ok": True}
 

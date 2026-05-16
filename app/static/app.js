@@ -28,6 +28,7 @@ let filter = "unplaced";
 let placing = null;
 let mode = "place";
 let timeline = [];
+let pinningNote = false;
 
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
@@ -147,6 +148,8 @@ function selectMedia(name) {
   renderPreviewMedia(p);
   $("previewInfo").textContent = p ? `Tipo: ${p.kind} · Stato: ${p.status}${p.plan ? ' · ' + p.plan : ''}${p.angle != null ? ' · ' + Math.round(p.angle) + '°' : ''}` : '';
   renderPhotoTags(p);
+  renderNotes(p);
+  cancelPinningMode();
   const edit = canEdit();
   $("btnSkip").disabled = !edit || mode !== "place";
   $("btnReset").disabled = !edit || mode !== "place" || !(p && p.status !== 'unplaced');
@@ -176,8 +179,95 @@ function renderPreviewMedia(p) {
     const img = document.createElement("img");
     img.id = "previewImg";
     img.src = API_BASE + "/media/" + encodeURIComponent(p.name);
+    img.onload = () => renderNotePins(p);
     wrap.appendChild(img);
   }
+}
+
+function renderNotes(p) {
+  const list = $("notesList");
+  const actions = $("notesActions");
+  list.innerHTML = "";
+  if (!p) {
+    actions.classList.add("hidden");
+    return;
+  }
+  if (canEdit()) {
+    actions.classList.remove("hidden");
+    $("btnAddPin").style.display = (p.kind === "image") ? "" : "none";
+  } else {
+    actions.classList.add("hidden");
+  }
+  const notes = p.notes || [];
+  for (const n of notes) {
+    const row = document.createElement("div");
+    row.className = "note-row" + (n.x != null ? " pinned" : "");
+    const text = document.createElement("div");
+    text.className = "note-text";
+    text.textContent = n.text;
+    if (canEdit()) {
+      text.title = "Click per modificare";
+      text.onclick = () => editNote(n);
+    }
+    row.appendChild(text);
+    if (canEdit()) {
+      const del = document.createElement("button");
+      del.className = "note-del";
+      del.textContent = "×";
+      del.title = "Elimina nota";
+      del.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm("Eliminare questa nota?")) return;
+        await api("/notes/" + n.id, { method: "DELETE" });
+        await loadState();
+        if (selectedMedia) selectMedia(selectedMedia);
+      };
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  }
+  renderNotePins(p);
+}
+
+function renderNotePins(p) {
+  const wrap = $("previewMedia");
+  const old = wrap.querySelector(".note-overlay");
+  if (old) old.remove();
+  if (!p || p.kind !== "image") return;
+  const notes = (p.notes || []).filter(n => n.x != null);
+  if (!notes.length) return;
+  const overlay = document.createElement("div");
+  overlay.className = "note-overlay";
+  for (const n of notes) {
+    const pin = document.createElement("div");
+    pin.className = "note-pin";
+    pin.style.left = (n.x * 100) + "%";
+    pin.style.top = (n.y * 100) + "%";
+    pin.title = n.text;
+    overlay.appendChild(pin);
+  }
+  wrap.appendChild(overlay);
+}
+
+async function editNote(n) {
+  const t = prompt("Modifica nota:", n.text);
+  if (t === null) return;
+  const text = t.trim();
+  if (!text) return;
+  await api("/notes/" + n.id, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  await loadState();
+  if (selectedMedia) selectMedia(selectedMedia);
+}
+
+function cancelPinningMode() {
+  if (!pinningNote) return;
+  pinningNote = false;
+  $("previewMedia").classList.remove("pinning");
+  $("btnAddPin").classList.remove("active");
 }
 
 async function loadPlanImage() {
@@ -417,6 +507,7 @@ $("btnLogout").onclick = async () => {
 
 function setMode(m) {
   mode = m;
+  cancelPinningMode();
   $("modePlace").classList.toggle("active", m === "place");
   $("modeView").classList.toggle("active", m === "view");
   $("timeline").classList.toggle("hidden", m !== "view");
@@ -661,6 +752,53 @@ $("btnRefresh").onclick = async () => {
     selectMedia(added[0].name);
   }
 };
+
+$("btnAddNote").onclick = async () => {
+  if (!selectedMedia) return;
+  const text = prompt("Testo nota:");
+  if (text === null) return;
+  const t = text.trim();
+  if (!t) return;
+  await api("/notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: selectedMedia, text: t }),
+  });
+  await loadState();
+  selectMedia(selectedMedia);
+};
+
+$("btnAddPin").onclick = () => {
+  if (!selectedMedia) return;
+  const p = state.media.find(x => x.name === selectedMedia);
+  if (!p || p.kind !== "image") return;
+  if (pinningNote) { cancelPinningMode(); return; }
+  pinningNote = true;
+  $("previewMedia").classList.add("pinning");
+  $("btnAddPin").classList.add("active");
+};
+
+$("previewMedia").addEventListener("click", async (e) => {
+  if (!pinningNote) return;
+  const img = $("previewMedia").querySelector("img");
+  if (!img) return;
+  const rect = img.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  cancelPinningMode();
+  const text = prompt(`Testo nota (punto ${Math.round(x*100)}%, ${Math.round(y*100)}%):`);
+  if (text === null) return;
+  const t = text.trim();
+  if (!t) return;
+  await api("/notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: selectedMedia, text: t, x, y }),
+  });
+  await loadState();
+  selectMedia(selectedMedia);
+});
 
 (() => {
   const resizer = $("previewResizer");
