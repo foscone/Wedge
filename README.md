@@ -68,8 +68,12 @@ serviti solo via API autenticata.
 Le thumbnail dei video sono generate con ffmpeg al primo accesso.
 
 ### Reverse proxy
-Se servi sotto un sub-path (es. `/wedge/`), imposta `ROOT_PATH=/wedge`
-nel file `.env`. Esempio nginx:
+
+Per esporre Wedge su un dominio dedicato via **Nginx Proxy Manager** vedi
+[`docs/nginx-proxy-manager.md`](docs/nginx-proxy-manager.md).
+
+Se invece servi sotto un sub-path (es. `/wedge/`), imposta `ROOT_PATH=/wedge`
+nel file `.env`. Esempio nginx vanilla:
 ```nginx
 location /wedge/ {
     proxy_pass http://127.0.0.1:8092/;
@@ -182,8 +186,12 @@ only served through the authenticated API.
 Video thumbnails are generated with ffmpeg on first access.
 
 ### Reverse proxy
-If serving under a sub-path (e.g., `/wedge/`), set `ROOT_PATH=/wedge` in the
-`.env` file. nginx example:
+
+To expose Wedge on a dedicated domain via **Nginx Proxy Manager** see
+[`docs/nginx-proxy-manager.md`](docs/nginx-proxy-manager.md).
+
+For sub-path mounting (e.g., `/wedge/`), set `ROOT_PATH=/wedge` in the
+`.env` file. Vanilla nginx example:
 ```nginx
 location /wedge/ {
     proxy_pass http://127.0.0.1:8092/;
