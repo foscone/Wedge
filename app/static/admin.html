@@ -41,11 +41,15 @@
         <label>Nome
           <input id="newName" placeholder="es. Casa Rossi" required>
         </label>
-        <label>Percorso foto/video (assoluto nel container)
-          <input id="newPhotos" placeholder="/projects/casa-rossi/photos" required>
-        </label>
-        <label>Percorso planimetrie (assoluto nel container)
-          <input id="newPlans" placeholder="/projects/casa-rossi/plans" required>
+        <label>Cartella progetto
+          <select id="newRoot" required>
+            <option value="">— scegli una cartella —</option>
+          </select>
+          <small class="muted">
+            Cartelle montate sotto <code id="projectsRootLabel">/projects/</code>.
+            Ogni cartella deve contenere le sottocartelle <code>photos/</code> e <code>plans/</code>.
+            <button type="button" id="refreshDirs" class="link-btn" style="padding:0 4px">Ricarica</button>
+          </small>
         </label>
         <label>Password di visualizzazione
           <input id="newViewPw" type="text" required>

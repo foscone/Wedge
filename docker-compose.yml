@@ -11,9 +11,10 @@ services:
       - THUMBS_DIR=/data/thumbs
     volumes:
       - ./data:/data
-      # Aggiungi qui i bind-mount per i tuoi progetti, es:
-      # - /percorso/host/casa-rossi/photos:/projects/casa-rossi/photos:ro
-      # - /percorso/host/casa-rossi/plans:/projects/casa-rossi/plans:ro
-      # I percorsi nel container (es. /projects/casa-rossi/photos) vanno
-      # inseriti poi nella pagina /admin di Wedge.
+      # Aggiungi un bind-mount per ogni progetto. Convenzione: monta una
+      # cartella host (es. casa-rossi/) sotto /projects/<nome>. La cartella
+      # host DEVE contenere due sottocartelle: photos/ e plans/.
+      # Esempio:
+      # - /percorso/host/casa-rossi:/projects/casa-rossi:ro
+      # Poi in /admin di Wedge selezioni "casa-rossi" dal menù a tendina.
     restart: unless-stopped

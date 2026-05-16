@@ -7,12 +7,44 @@ async function refreshSession() {
     $("loginSection").classList.add("hidden");
     $("manageSection").classList.remove("hidden");
     $("btnLogout").classList.remove("hidden");
-    await loadProjects();
+    await Promise.all([loadProjects(), loadProjectDirs()]);
   } else {
     $("loginSection").classList.remove("hidden");
     $("manageSection").classList.add("hidden");
     $("btnLogout").classList.add("hidden");
   }
+}
+
+async function loadProjectDirs() {
+  const r = await fetch("/api/admin/project_dirs");
+  if (!r.ok) return;
+  const data = await r.json();
+  const sel = $("newRoot");
+  const cur = sel.value;
+  $("projectsRootLabel").textContent = data.projects_root + "/";
+  sel.innerHTML = '<option value="">— scegli una cartella —</option>';
+  if (!data.dirs.length) {
+    const opt = document.createElement("option");
+    opt.disabled = true;
+    opt.textContent = "(nessuna cartella montata: aggiungi un volume in docker-compose)";
+    sel.appendChild(opt);
+    return;
+  }
+  for (const d of data.dirs) {
+    const opt = document.createElement("option");
+    opt.value = d.name;
+    if (d.has_photos && d.has_plans) {
+      opt.textContent = d.name;
+    } else {
+      const missing = [];
+      if (!d.has_photos) missing.push("photos/");
+      if (!d.has_plans) missing.push("plans/");
+      opt.textContent = `${d.name} — manca: ${missing.join(", ")}`;
+      opt.disabled = true;
+    }
+    sel.appendChild(opt);
+  }
+  if (cur) sel.value = cur;
 }
 
 async function loadProjects() {
@@ -122,8 +154,7 @@ $("createForm").addEventListener("submit", async (e) => {
   const payload = {
     slug: $("newSlug").value.trim(),
     name: $("newName").value.trim(),
-    photos_path: $("newPhotos").value.trim(),
-    plans_path: $("newPlans").value.trim(),
+    root: $("newRoot").value,
     view_password: $("newViewPw").value,
     edit_password: $("newEditPw").value,
   };
@@ -137,11 +168,14 @@ $("createForm").addEventListener("submit", async (e) => {
     $("createOk").classList.remove("hidden");
     $("createForm").reset();
     loadProjects();
+    loadProjectDirs();
   } else {
     const txt = await r.text();
     $("createErr").textContent = "Errore: " + txt;
     $("createErr").classList.remove("hidden");
   }
 });
+
+$("refreshDirs").addEventListener("click", loadProjectDirs);
 
 refreshSession();

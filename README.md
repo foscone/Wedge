@@ -31,21 +31,22 @@ istanza può ospitare più progetti, ognuno con percorsi e password proprie.
    - `SECRET_KEY` — stringa lunga, casuale e segreta (firma i cookie di sessione).
      Generala con: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
-2. In `docker-compose.yml` aggiungi i bind-mount delle cartelle di ogni
-   progetto, ad esempio:
+2. In `docker-compose.yml` aggiungi un bind-mount per ogni progetto.
+   Convenzione: monta una cartella host sotto `/projects/<nome>`. La
+   cartella host **deve** contenere due sottocartelle: `photos/` e `plans/`.
    ```yaml
    volumes:
      - ./data:/data
-     - /percorso/host/casa-rossi/photos:/projects/casa-rossi/photos:ro
-     - /percorso/host/casa-rossi/plans:/projects/casa-rossi/plans:ro
+     - /percorso/host/casa-rossi:/projects/casa-rossi:ro
    ```
    (`:ro` se non vuoi che il container possa modificare i file originali)
 
 3. `docker compose up -d --build` (o `make avvia`)
 
-4. Apri `http://host:8092/admin`, fai login con `ADMIN_PASSWORD` e crea il
-   progetto inserendo i percorsi **come visti dentro al container** (es.
-   `/projects/casa-rossi/photos`).
+4. Apri `http://host:8092/admin`, fai login con `ADMIN_PASSWORD`, poi
+   crea il progetto: il campo **Cartella progetto** è un menù a tendina
+   con tutte le cartelle montate sotto `/projects/` che hanno le
+   sottocartelle `photos/` e `plans/`.
 
 5. Dalla landing `/` clicca sul progetto, inserisci la password di
    visualizzazione o di modifica.
@@ -144,21 +145,22 @@ instance can host multiple projects, each with its own paths and passwords.
    - `SECRET_KEY` — a long, random, secret string (signs session cookies).
      Generate one with: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
-2. In `docker-compose.yml` add the bind-mounts for each project's folders,
-   for example:
+2. In `docker-compose.yml` add a bind-mount for each project. Convention:
+   mount a host folder under `/projects/<name>`. The host folder **must**
+   contain two subfolders: `photos/` and `plans/`.
    ```yaml
    volumes:
      - ./data:/data
-     - /host/path/casa-rossi/photos:/projects/casa-rossi/photos:ro
-     - /host/path/casa-rossi/plans:/projects/casa-rossi/plans:ro
+     - /host/path/casa-rossi:/projects/casa-rossi:ro
    ```
    (`:ro` if you don't want the container to be able to modify the source files)
 
 3. `docker compose up -d --build` (or `make avvia`)
 
-4. Open `http://host:8092/admin`, log in with `ADMIN_PASSWORD`, and create
-   the project, entering the paths **as seen inside the container** (e.g.,
-   `/projects/casa-rossi/photos`).
+4. Open `http://host:8092/admin`, log in with `ADMIN_PASSWORD`, then
+   create a project: the **Cartella progetto** field is a drop-down listing
+   every folder mounted under `/projects/` that contains the required
+   `photos/` and `plans/` subfolders.
 
 5. From the landing page `/` click the project and enter the view or edit
    password.

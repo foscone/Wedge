@@ -29,6 +29,7 @@ from .auth import (
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 THUMBS_DIR = Path(os.environ.get("THUMBS_DIR", "/data/thumbs"))
+PROJECTS_ROOT = Path(os.environ.get("PROJECTS_ROOT", "/projects"))
 ROOT_PATH = os.environ.get("ROOT_PATH", "")
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -429,29 +430,53 @@ def admin_list_projects(request: Request):
     return [dict(r) for r in rows]
 
 
+@app.get("/api/admin/project_dirs")
+def admin_list_project_dirs(request: Request):
+    """List top-level dirs in PROJECTS_ROOT, flagging which ones have the
+    required photos/ and plans/ subfolders."""
+    require_admin(request)
+    out = []
+    if PROJECTS_ROOT.is_dir():
+        for d in sorted(PROJECTS_ROOT.iterdir()):
+            if not d.is_dir() or d.name.startswith("."):
+                continue
+            out.append({
+                "name": d.name,
+                "has_photos": (d / "photos").is_dir(),
+                "has_plans": (d / "plans").is_dir(),
+            })
+    return {"projects_root": str(PROJECTS_ROOT), "dirs": out}
+
+
 @app.post("/api/admin/projects")
 def admin_create_project(request: Request, payload: dict = Body(...)):
     require_admin(request)
     slug = (payload.get("slug") or "").strip().lower()
     name = (payload.get("name") or "").strip()
-    photos_path = (payload.get("photos_path") or "").strip()
-    plans_path = (payload.get("plans_path") or "").strip()
+    root_name = (payload.get("root") or "").strip()
     view_password = payload.get("view_password") or ""
     edit_password = payload.get("edit_password") or ""
     if not SLUG_RE.match(slug):
         raise HTTPException(400, "slug must match [a-z0-9][a-z0-9-]{0,62}")
     if not name:
         raise HTTPException(400, "name required")
-    if not photos_path or not plans_path:
-        raise HTTPException(400, "photos_path and plans_path required")
+    if not root_name:
+        raise HTTPException(400, "root required")
+    if "/" in root_name or "\\" in root_name or root_name in (".", "..") or root_name.startswith("."):
+        raise HTTPException(400, "invalid root name")
     if not view_password or not edit_password:
         raise HTTPException(400, "both passwords required")
     if view_password == edit_password:
         raise HTTPException(400, "view and edit passwords must differ")
+    root_p = PROJECTS_ROOT / root_name
+    if not root_p.is_dir():
+        raise HTTPException(400, f"folder not mounted: {root_p}")
+    photos_path = str(root_p / "photos")
+    plans_path = str(root_p / "plans")
     if not Path(photos_path).is_dir():
-        raise HTTPException(400, f"photos_path is not a directory inside the container: {photos_path}")
+        raise HTTPException(400, f"missing required subfolder: {photos_path}")
     if not Path(plans_path).is_dir():
-        raise HTTPException(400, f"plans_path is not a directory inside the container: {plans_path}")
+        raise HTTPException(400, f"missing required subfolder: {plans_path}")
     with db() as c:
         try:
             c.execute(
