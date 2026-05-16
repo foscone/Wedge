@@ -1,0 +1,25 @@
+services:
+  wedge:
+    build: .
+    container_name: wedge
+    ports:
+      - "8092:8000"
+    environment:
+      - DATA_DIR=/data
+      - THUMBS_DIR=/data/thumbs
+      # Sub-path se servi sotto https://host/wedge/
+      - ROOT_PATH=
+      # Password di amministrazione dell'istanza (obbligatoria).
+      - ADMIN_PASSWORD=change-me-admin
+      # Chiave per firmare i cookie di sessione (obbligatoria, segreta).
+      - SECRET_KEY=change-me-very-long-random-string
+      # Durata cookie in giorni
+      - SESSION_DAYS=30
+    volumes:
+      - ./data:/data
+      # Aggiungi qui i bind-mount per i tuoi progetti, es:
+      # - /percorso/host/casa-rossi/photos:/projects/casa-rossi/photos:ro
+      # - /percorso/host/casa-rossi/plans:/projects/casa-rossi/plans:ro
+      # I percorsi nel container (es. /projects/casa-rossi/photos) vanno
+      # inseriti poi nella pagina /admin di Wedge.
+    restart: unless-stopped

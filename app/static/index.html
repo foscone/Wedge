@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wedge</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page">
+<div class="page-wrap">
+  <header class="page-header">
+    <h1>Wedge</h1>
+    <a class="link-btn" href="/admin">Admin</a>
+  </header>
+  <main class="page-main">
+    <h2>Progetti</h2>
+    <div id="projects" class="project-list">
+      <div class="muted">Caricamento…</div>
+    </div>
+  </main>
+  <footer class="page-footer muted">
+    Posiziona le foto e i video sulla planimetria.
+  </footer>
+</div>
+<script>
+(async () => {
+  const list = document.getElementById('projects');
+  try {
+    const r = await fetch('/api/session');
+    if (!r.ok) throw new Error('http ' + r.status);
+    const { projects, granted } = await r.json();
+    if (!projects.length) {
+      list.innerHTML = '<div class="muted">Nessun progetto. Vai sulla pagina <a href="/admin">Admin</a> per crearne uno.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    for (const p of projects) {
+      const granted_level = granted && granted[p.slug];
+      const a = document.createElement('a');
+      a.className = 'project-card';
+      a.href = granted_level ? '/p/' + encodeURIComponent(p.slug) : '/p/' + encodeURIComponent(p.slug) + '/login';
+      a.innerHTML = `
+        <div class="project-name">${p.name}</div>
+        <div class="project-slug muted">${p.slug}</div>
+        <div class="project-level">${granted_level ? '<span class="badge level-' + granted_level + '">' + (granted_level === 'edit' ? 'modifica' : 'sola visualizzazione') + '</span>' : '<span class="badge level-locked">password richiesta</span>'}</div>
+      `;
+      list.appendChild(a);
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="muted">Errore di caricamento.</div>';
+  }
+})();
+</script>
+</body>
+</html>

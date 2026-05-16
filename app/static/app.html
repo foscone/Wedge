@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wedge</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="editor">
+<div id="app">
+  <aside id="sidebar">
+    <div id="plansArea">
+      <div class="topbar">
+        <a class="topbar-link" href="/">← Progetti</a>
+        <button id="btnLogout" class="link-btn" title="Esci da questo progetto">Esci</button>
+      </div>
+      <h1 id="projectName">…</h1>
+      <div class="section">
+        <label>Planimetria</label>
+        <div id="planGrid"></div>
+      </div>
+      <div class="section">
+        <label>FOV (°) <span id="fovVal">60</span></label>
+        <input id="fov" type="range" min="10" max="170" value="60">
+      </div>
+    </div>
+    <div id="photosArea">
+      <div class="section">
+        <label>Filtro media</label>
+        <select id="filter">
+          <option value="all">Tutti</option>
+          <option value="unplaced" selected>Da posizionare</option>
+          <option value="placed">Posizionati</option>
+          <option value="skipped">Saltati</option>
+        </select>
+        <div id="counts" class="counts"></div>
+      </div>
+      <div id="photoList" class="photo-list"></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="toolbar">
+      <div id="modeSwitch">
+        <button id="modePlace" class="mode-btn active">Posizionamento</button>
+        <button id="modeView" class="mode-btn">Visualizzazione</button>
+      </div>
+      <span id="status">Seleziona un media, poi clicca sulla planimetria per posizionarlo. Trascina dal punto di posizionamento per impostare la direzione.</span>
+      <button id="btnRefresh">Controlla nuovi media</button>
+      <button id="btnSkip" disabled>Salta</button>
+      <button id="btnReset" disabled>Rimuovi posizionamento</button>
+    </div>
+    <div id="canvasWrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="timeline" class="hidden">
+      <button id="tlPrev">◀</button>
+      <input id="tlRange" type="range" min="0" max="0" value="0">
+      <button id="tlNext">▶</button>
+      <span id="tlLabel">—</span>
+    </div>
+  </main>
+
+  <div id="previewResizer"></div>
+  <aside id="preview">
+    <div id="previewName">—</div>
+    <div id="previewMedia"></div>
+    <div id="previewInfo"></div>
+    <div id="tagsBox">
+      <div class="tags-header">
+        <strong>Tag</strong>
+        <button id="manageTags">Gestisci</button>
+      </div>
+      <div id="photoTags"></div>
+    </div>
+  </aside>
+
+<div id="tagsModal" class="modal hidden">
+  <div class="modal-box" style="min-width:420px;max-width:600px;max-height:80vh;overflow:auto">
+    <h2>Gestione tag</h2>
+    <div id="tagTypesList"></div>
+    <hr>
+    <div>
+      <input id="newTypeName" placeholder="Nuova tipologia (es. Piano)">
+      <input id="newTypeColor" type="color" value="#88aacc">
+      <button id="addType">Aggiungi tipologia</button>
+    </div>
+    <div style="margin-top:12px;text-align:right">
+      <button id="closeTagsModal">Chiudi</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

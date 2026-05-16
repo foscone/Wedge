@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wedge — Accesso</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page">
+<div class="page-wrap narrow">
+  <header class="page-header">
+    <a class="link-btn" href="/">← Progetti</a>
+  </header>
+  <main class="page-main">
+    <h2 id="title">Accesso</h2>
+    <p id="hint" class="muted">Inserisci la password di visualizzazione o di modifica per accedere al progetto.</p>
+    <form id="form" class="form">
+      <label>Password
+        <input id="password" type="password" autocomplete="current-password" autofocus>
+      </label>
+      <button type="submit">Entra</button>
+      <div id="err" class="error hidden"></div>
+    </form>
+  </main>
+</div>
+<script>
+(async () => {
+  const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
+  if (!slug) { location.href = '/'; return; }
+  document.getElementById('title').textContent = 'Accesso · ' + slug;
+  try {
+    const r = await fetch('/api/session');
+    const data = await r.json();
+    const proj = (data.projects || []).find(p => p.slug === slug);
+    if (proj) document.getElementById('title').textContent = 'Accesso · ' + proj.name;
+    if (data.granted && data.granted[slug]) {
+      location.href = '/p/' + encodeURIComponent(slug);
+      return;
+    }
+  } catch (e) {}
+  const form = document.getElementById('form');
+  const err = document.getElementById('err');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.classList.add('hidden');
+    const password = document.getElementById('password').value;
+    try {
+      const r = await fetch('/api/projects/' + encodeURIComponent(slug) + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (!r.ok) throw new Error('bad');
+      location.href = '/p/' + encodeURIComponent(slug);
+    } catch (e2) {
+      err.textContent = 'Password errata.';
+      err.classList.remove('hidden');
+      document.getElementById('password').select();
+    }
+  });
+})();
+</script>
+</body>
+</html>

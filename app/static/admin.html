@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wedge — Admin</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page">
+<div class="page-wrap">
+  <header class="page-header">
+    <h1>Wedge · Admin</h1>
+    <div>
+      <a class="link-btn" href="/">← Progetti</a>
+      <button id="btnLogout" class="link-btn hidden">Logout admin</button>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <section id="loginSection" class="hidden">
+      <h2>Accesso amministratore</h2>
+      <form id="loginForm" class="form">
+        <label>Password admin
+          <input id="adminPw" type="password" autocomplete="current-password" autofocus>
+        </label>
+        <button type="submit">Entra</button>
+        <div id="loginErr" class="error hidden"></div>
+      </form>
+    </section>
+
+    <section id="manageSection" class="hidden">
+      <h2>Progetti</h2>
+      <div id="projects" class="admin-list"></div>
+
+      <h2 style="margin-top:32px">Nuovo progetto</h2>
+      <form id="createForm" class="form">
+        <label>Slug (identificatore URL)
+          <input id="newSlug" placeholder="es. casa-rossi" required>
+          <small class="muted">solo lettere minuscole, numeri e trattini</small>
+        </label>
+        <label>Nome
+          <input id="newName" placeholder="es. Casa Rossi" required>
+        </label>
+        <label>Percorso foto/video (assoluto nel container)
+          <input id="newPhotos" placeholder="/projects/casa-rossi/photos" required>
+        </label>
+        <label>Percorso planimetrie (assoluto nel container)
+          <input id="newPlans" placeholder="/projects/casa-rossi/plans" required>
+        </label>
+        <label>Password di visualizzazione
+          <input id="newViewPw" type="text" required>
+        </label>
+        <label>Password di modifica
+          <input id="newEditPw" type="text" required>
+        </label>
+        <button type="submit">Crea progetto</button>
+        <div id="createErr" class="error hidden"></div>
+        <div id="createOk" class="ok hidden"></div>
+      </form>
+    </section>
+  </main>
+</div>
+<script src="/static/admin.js"></script>
+</body>
+</html>
