@@ -18,26 +18,28 @@ istanza può ospitare più progetti, ognuno con percorsi e password proprie.
 
 ## Avvio
 
-1. Modifica `docker-compose.yml`:
-   - imposta `ADMIN_PASSWORD` (password amministratore dell'istanza)
-   - imposta `SECRET_KEY` con una stringa lunga, casuale e segreta (firma i
-     cookie di sessione)
-   - aggiungi i bind-mount delle cartelle di ogni progetto, ad esempio:
-     ```yaml
-     volumes:
-       - ./data:/data
-       - /percorso/host/casa-rossi/photos:/projects/casa-rossi/photos:ro
-       - /percorso/host/casa-rossi/plans:/projects/casa-rossi/plans:ro
-     ```
-     (`:ro` se non vuoi che il container possa modificare i file originali)
+1. Copia `.env.example` in `.env` e imposta:
+   - `ADMIN_PASSWORD` — password amministratore dell'istanza
+   - `SECRET_KEY` — stringa lunga, casuale e segreta (firma i cookie di sessione).
+     Generala con: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
-2. `docker compose up -d --build`
+2. In `docker-compose.yml` aggiungi i bind-mount delle cartelle di ogni
+   progetto, ad esempio:
+   ```yaml
+   volumes:
+     - ./data:/data
+     - /percorso/host/casa-rossi/photos:/projects/casa-rossi/photos:ro
+     - /percorso/host/casa-rossi/plans:/projects/casa-rossi/plans:ro
+   ```
+   (`:ro` se non vuoi che il container possa modificare i file originali)
 
-3. Apri `http://host:8092/admin`, fai login con `ADMIN_PASSWORD` e crea il
+3. `docker compose up -d --build` (o `make avvia`)
+
+4. Apri `http://host:8092/admin`, fai login con `ADMIN_PASSWORD` e crea il
    progetto inserendo i percorsi **come visti dentro al container** (es.
    `/projects/casa-rossi/photos`).
 
-4. Dalla landing `/` clicca sul progetto, inserisci la password di
+5. Dalla landing `/` clicca sul progetto, inserisci la password di
    visualizzazione o di modifica.
 
 ## Struttura
@@ -77,3 +79,19 @@ location /wedge/ {
 Aggiungere nuovi file nella cartella di un progetto li riporta automaticamente
 in stato `unplaced` (vengono rilevati al refresh del progetto, da pulsante o
 ricaricando la pagina).
+
+## Licenza
+
+Wedge è distribuito sotto licenza **GNU Affero General Public License v3.0**
+(AGPL-3.0). Vedi il file [LICENSE](LICENSE) per il testo completo.
+
+In sintesi:
+- Puoi usare, studiare, modificare e ridistribuire il codice.
+- Le opere derivate **devono** essere distribuite con la stessa licenza
+  AGPL-3.0.
+- Se ospiti una versione modificata come servizio web accessibile a terzi,
+  **devi** rendere disponibile il codice sorgente delle tue modifiche agli
+  utenti del servizio.
+- Devi mantenere le note di copyright e di attribuzione esistenti.
+
+Copyright (C) 2026 Fosco Ventura (GitHub: [@foscone](https://github.com/foscone))
