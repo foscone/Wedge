@@ -9,7 +9,8 @@ const LOGIN_URL = "/p/" + encodeURIComponent(SLUG) + "/login";
 async function api(path, opts) {
   const r = await fetch(API_BASE + path, opts);
   if (r.status === 401) {
-    location.href = LOGIN_URL;
+    const here = location.pathname + location.search + location.hash;
+    location.href = LOGIN_URL + "?next=" + encodeURIComponent(here);
     throw new Error("unauthorized");
   }
   return r;
@@ -29,6 +30,7 @@ let placing = null;
 let mode = "place";
 let timeline = [];
 let pinningNote = false;
+let pendingSharedMedia = new URLSearchParams(location.search).get('media') || null;
 
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
@@ -47,6 +49,13 @@ async function loadState() {
   rebuildTimeline();
   await loadPlanImage();
   draw();
+  if (pendingSharedMedia) {
+    const shared = pendingSharedMedia;
+    pendingSharedMedia = null;
+    if (state.media.find(m => m.name === shared)) {
+      selectMedia(shared);
+    }
+  }
 }
 
 function applyLevelToUI() {
@@ -145,6 +154,7 @@ function selectMedia(name) {
   selectedMedia = name;
   const p = state.media.find(x => x.name === name);
   $("previewName").textContent = name;
+  $("btnShare").disabled = !p;
   renderPreviewMedia(p);
   $("previewInfo").textContent = p ? `Tipo: ${p.kind} · Stato: ${p.status}${p.plan ? ' · ' + p.plan : ''}${p.angle != null ? ' · ' + Math.round(p.angle) + '°' : ''}` : '';
   renderPhotoTags(p);
@@ -750,6 +760,21 @@ $("btnRefresh").onclick = async () => {
     $("filter").value = "unplaced";
     renderMediaList();
     selectMedia(added[0].name);
+  }
+};
+
+$("btnShare").onclick = async () => {
+  if (!selectedMedia) return;
+  const base = location.href.split('?')[0].split('#')[0];
+  const url = `${base}?media=${encodeURIComponent(selectedMedia)}`;
+  const btn = $("btnShare");
+  const orig = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = "Copiato!";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  } catch (e) {
+    prompt("Link di condivisione (Ctrl+C per copiare):", url);
   }
 };
 

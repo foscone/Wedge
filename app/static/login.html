@@ -28,13 +28,22 @@
   const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
   if (!slug) { location.href = '/'; return; }
   document.getElementById('title').textContent = 'Accesso · ' + slug;
+  // Pick redirect target: ?next= if it's a same-origin path under /p/{slug}.
+  function pickTarget() {
+    const next = new URLSearchParams(location.search).get('next');
+    const fallback = '/p/' + encodeURIComponent(slug);
+    if (!next) return fallback;
+    if (!next.startsWith('/') || next.includes('://') || next.includes('\\')) return fallback;
+    if (!next.includes('/p/' + slug)) return fallback;
+    return next;
+  }
   try {
     const r = await fetch('/api/session');
     const data = await r.json();
     const proj = (data.projects || []).find(p => p.slug === slug);
     if (proj) document.getElementById('title').textContent = 'Accesso · ' + proj.name;
     if (data.granted && data.granted[slug]) {
-      location.href = '/p/' + encodeURIComponent(slug);
+      location.href = pickTarget();
       return;
     }
   } catch (e) {}
@@ -51,7 +60,7 @@
         body: JSON.stringify({ password }),
       });
       if (!r.ok) throw new Error('bad');
-      location.href = '/p/' + encodeURIComponent(slug);
+      location.href = pickTarget();
     } catch (e2) {
       err.textContent = 'Password errata.';
       err.classList.remove('hidden');
