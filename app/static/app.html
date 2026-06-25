@@ -48,15 +48,18 @@
 
   <main id="main">
     <div id="toolbar">
-      <div id="modeSwitch">
-        <button id="modePlace" class="mode-btn active">Posizionamento</button>
-        <button id="modeView" class="mode-btn">Visualizzazione</button>
+      <div class="toolbar-actions">
+        <div id="modeSwitch">
+          <button id="modePlace" class="mode-btn active">Posizionamento</button>
+          <button id="modeView" class="mode-btn">Visualizzazione</button>
+        </div>
+        <button id="btnRefresh">Controlla nuovi media</button>
+        <button id="btnSkip" disabled title="Salta la foto selezionata (tasto S)">Salta</button>
+        <button id="btnReset" disabled>Rimuovi posizionamento</button>
+        <span class="toolbar-spacer"></span>
+        <button id="btnExportPdf" class="primary" title="Stampa in PDF le foto selezionate">Esporta PDF (0)</button>
       </div>
-      <span id="status">Seleziona un media, poi clicca sulla planimetria per posizionarlo. Trascina dal punto di posizionamento per impostare la direzione. Premi S per saltare la foto.</span>
-      <button id="btnRefresh">Controlla nuovi media</button>
-      <button id="btnSkip" disabled title="Salta la foto selezionata (tasto S)">Salta</button>
-      <button id="btnReset" disabled>Rimuovi posizionamento</button>
-      <button id="btnExportPdf" title="Stampa in PDF le foto selezionate">Esporta PDF (0)</button>
+      <span id="status">Seleziona un media, poi clicca sulla planimetria per posizionarlo. Trascina dal punto di posizionamento per impostare la direzione. Premi <kbd>S</kbd> per saltare la foto.</span>
     </div>
     <div id="canvasWrap">
       <canvas id="canvas"></canvas>

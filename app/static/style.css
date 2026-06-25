@@ -61,7 +61,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .dot.skipped { background: #888; }
 .counts { font-size: 11px; color: #aaa; margin-top: 6px; }
 #main { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-#toolbar { flex: 0 0 auto; padding: 8px; background: #26262c; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#toolbar { flex: 0 0 auto; padding: 8px 10px; background: #26262c; border-bottom: 1px solid #333; display: flex; flex-direction: column; gap: 7px; }
+.toolbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1 1 auto; }
+#btnExportPdf.primary { background: #3b6ea5; border-color: #3b6ea5; color: #fff; font-weight: 600; }
+#btnExportPdf.primary:hover:not(:disabled) { background: #4880bd; }
 #canvasWrap { flex: 1; min-height: 0; overflow: hidden; background: #15151a; position: relative; }
 #timeline { flex: 0 0 auto; background: #26262c; border-top: 1px solid #333; padding: 8px; display: flex; gap: 8px; align-items: center; }
 #modeSwitch { display: flex; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
@@ -70,7 +74,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 #tlRange { flex: 1; }
 #tlLabel { font-size: 12px; color: #bbb; min-width: 140px; text-align: right; font-variant-numeric: tabular-nums; }
 .hidden { display: none !important; }
-#status { flex: 1; font-size: 12px; color: #bbb; }
+#status { font-size: 12px; color: #8f8f97; line-height: 1.4; }
+#status kbd { background: #3a3a44; border: 1px solid #555; border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; font-family: inherit; font-size: 11px; color: #ddd; }
 canvas { display: block; cursor: crosshair; }
 body.view-only canvas { cursor: default; }
 #previewMedia { position: relative; }
