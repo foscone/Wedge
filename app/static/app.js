@@ -784,17 +784,22 @@ $("btnExportPdf").onclick = () => {
   const savedSize = localStorage.getItem("wedge_pdf_size") || "A4";
   const sizeRadio = document.querySelector(`input[name="pdfSize"][value="${savedSize}"]`);
   if (sizeRadio) sizeRadio.checked = true;
+  const savedOrient = localStorage.getItem("wedge_pdf_orient") || "portrait";
+  const orientRadio = document.querySelector(`input[name="pdfOrient"][value="${savedOrient}"]`);
+  if (orientRadio) orientRadio.checked = true;
   $("pdfModal").classList.remove("hidden");
 };
 $("pdfCancel").onclick = () => $("pdfModal").classList.add("hidden");
 
 $("pdfGenerate").onclick = async () => {
   const page_size = document.querySelector('input[name="pdfSize"]:checked')?.value || "A4";
+  const orientation = document.querySelector('input[name="pdfOrient"]:checked')?.value || "portrait";
   const header_text = $("pdfHeader").value;
   const footer_text = $("pdfFooter").value;
   localStorage.setItem("wedge_pdf_header", header_text);
   localStorage.setItem("wedge_pdf_footer", footer_text);
   localStorage.setItem("wedge_pdf_size", page_size);
+  localStorage.setItem("wedge_pdf_orient", orientation);
   // ordina i nomi selezionati come compaiono nella lista (per data/nome)
   const ordered = state.media
     .filter(p => selectedForPdf.has(p.name))
@@ -809,7 +814,7 @@ $("pdfGenerate").onclick = async () => {
     const r = await api("/export_pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ media_names: ordered, page_size, header_text, footer_text }),
+      body: JSON.stringify({ media_names: ordered, page_size, orientation, header_text, footer_text }),
     });
     if (!r.ok) { alert("Errore durante la generazione del PDF."); return; }
     const blob = await r.blob();

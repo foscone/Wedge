@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from PIL import Image, ImageOps
-from reportlab.lib.pagesizes import A3, A4
+from reportlab.lib.pagesizes import A3, A4, landscape, portrait
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
@@ -215,6 +215,7 @@ def build_pdf(
     *,
     groups: list[dict],
     page_size: str = "A4",
+    orientation: str = "portrait",
     header_text: str = "",
     footer_text: str = "",
 ) -> bytes:
@@ -223,8 +224,10 @@ def build_pdf(
         - "medias": lista di dict {name, x, y, angle, fov, kind, embed_path}
     Ogni gruppo inizia su una nuova pagina; la planimetria non viene ripetuta
     sulle pagine successive dello stesso gruppo.
+    `orientation`: "portrait" (verticale) o "landscape" (orizzontale).
     """
     pg = PAGE_SIZES.get(page_size, A4)
+    pg = landscape(pg) if orientation == "landscape" else portrait(pg)
     b = _Builder(pg, header_text, footer_text)
 
     for group in groups:

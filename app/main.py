@@ -699,6 +699,9 @@ def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
     page_size = payload.get("page_size", "A4")
     if page_size not in ("A4", "A3"):
         page_size = "A4"
+    orientation = payload.get("orientation", "portrait")
+    if orientation not in ("portrait", "landscape"):
+        orientation = "portrait"
     header_text = (payload.get("header_text") or "")[:2000]
     footer_text = (payload.get("footer_text") or "")[:2000]
 
@@ -758,6 +761,7 @@ def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
     pdf_bytes = build_pdf(
         groups=groups,
         page_size=page_size,
+        orientation=orientation,
         header_text=header_text,
         footer_text=footer_text,
     )
