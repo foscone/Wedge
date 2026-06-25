@@ -35,6 +35,13 @@
         </select>
         <div id="counts" class="counts"></div>
       </div>
+      <div class="section pdf-select-bar">
+        <label>Selezione PDF <span id="pdfSelCount">0</span></label>
+        <div class="pdf-select-actions">
+          <button id="btnSelectAll" class="link-btn">Seleziona filtrati</button>
+          <button id="btnSelectNone" class="link-btn">Azzera</button>
+        </div>
+      </div>
       <div id="photoList" class="photo-list"></div>
     </div>
   </aside>
@@ -49,6 +56,7 @@
       <button id="btnRefresh">Controlla nuovi media</button>
       <button id="btnSkip" disabled>Salta</button>
       <button id="btnReset" disabled>Rimuovi posizionamento</button>
+      <button id="btnExportPdf" title="Stampa in PDF le foto selezionate">Esporta PDF (0)</button>
     </div>
     <div id="canvasWrap">
       <canvas id="canvas"></canvas>
@@ -87,6 +95,32 @@
       <div id="notesList"></div>
     </div>
   </aside>
+
+<div id="pdfModal" class="modal hidden">
+  <div class="modal-box" style="min-width:420px;max-width:560px">
+    <h2>Esporta PDF</h2>
+    <p id="pdfModalInfo" style="font-size:13px;color:#aaa;margin:0 0 12px"></p>
+    <div class="pdf-field">
+      <label>Formato foglio</label>
+      <div class="pdf-radios">
+        <label><input type="radio" name="pdfSize" value="A4" checked> A4</label>
+        <label><input type="radio" name="pdfSize" value="A3"> A3</label>
+      </div>
+    </div>
+    <div class="pdf-field">
+      <label for="pdfHeader">Intestazione (carta intestata, una riga per riga)</label>
+      <textarea id="pdfHeader" rows="2" placeholder="Es. Studio Tecnico Rossi · Via …"></textarea>
+    </div>
+    <div class="pdf-field">
+      <label for="pdfFooter">Piè di pagina</label>
+      <textarea id="pdfFooter" rows="2" placeholder="Es. Tel. … · email … · P.IVA …"></textarea>
+    </div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+      <button id="pdfCancel">Annulla</button>
+      <button id="pdfGenerate">Genera PDF</button>
+    </div>
+  </div>
+</div>
 
 <div id="tagsModal" class="modal hidden">
   <div class="modal-box" style="min-width:420px;max-width:600px;max-height:80vh;overflow:auto">

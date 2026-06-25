@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import ExifTags, Image, ImageOps
 
+from .pdf_export import build_pdf
 from .auth import (
     clear_session,
     grant_project_access,
@@ -234,6 +235,23 @@ def project_thumbs_dir(project_id: int) -> Path:
     p = THUMBS_DIR / str(project_id)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def ensure_thumb(project: sqlite3.Row, name: str) -> Optional[Path]:
+    """Restituisce il percorso della thumbnail (generandola se serve), oppure
+    None se non è stato possibile crearla. Usata per incorporare i video nel PDF."""
+    src = safe_path(Path(project["photos_path"]), name)
+    key = hashlib.sha1(f"{name}-{src.stat().st_mtime_ns}".encode()).hexdigest()
+    tp = project_thumbs_dir(project["id"]) / f"{key}.jpg"
+    if not tp.exists():
+        ok = (
+            make_video_thumb(src, tp)
+            if media_kind(name) == "video"
+            else make_image_thumb(src, tp)
+        )
+        if not ok:
+            return None
+    return tp
 
 
 def sync_media(project: sqlite3.Row) -> set[str]:
@@ -667,6 +685,88 @@ def get_plan(slug: str, name: str, request: Request):
     project = project_for_request(slug, "view", request)
     p = safe_path(Path(project["plans_path"]), name)
     return FileResponse(p)
+
+
+@app.post("/api/projects/{slug}/export_pdf")
+def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
+    """Genera un PDF con la planimetria (e i coni ottici delle foto selezionate)
+    seguita dalle foto. Le foto sono raggruppate per planimetria; ogni gruppo
+    inizia su una nuova pagina e la planimetria non viene ripetuta."""
+    project = project_for_request(slug, "view", request)
+    names = payload.get("media_names") or []
+    if not names:
+        raise HTTPException(400, "nessuna foto selezionata")
+    page_size = payload.get("page_size", "A4")
+    if page_size not in ("A4", "A3"):
+        page_size = "A4"
+    header_text = (payload.get("header_text") or "")[:2000]
+    footer_text = (payload.get("footer_text") or "")[:2000]
+
+    with db() as c:
+        rows = {
+            r["name"]: dict(r)
+            for r in c.execute(
+                "SELECT * FROM media WHERE project_id=?", (project["id"],)
+            )
+        }
+    # mantieni l'ordine di selezione, scarta nomi sconosciuti
+    selected = [rows[n] for n in names if n in rows]
+    if not selected:
+        raise HTTPException(400, "nessuna foto valida selezionata")
+
+    # raggruppa per planimetria, preservando l'ordine di prima comparsa
+    order: list = []
+    buckets: dict = {}
+    for m in selected:
+        key = m["plan"] if (m["status"] == "placed" and m["plan"]) else None
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(m)
+
+    groups = []
+    for key in order:
+        medias = []
+        for m in buckets[key]:
+            embed = None
+            try:
+                if media_kind(m["name"]) == "video":
+                    embed = ensure_thumb(project, m["name"])
+                else:
+                    embed = safe_path(Path(project["photos_path"]), m["name"])
+            except HTTPException:
+                embed = None
+            medias.append(
+                {
+                    "name": m["name"],
+                    "x": m["x"],
+                    "y": m["y"],
+                    "angle": m["angle"],
+                    "fov": m["fov"],
+                    "kind": m["kind"],
+                    "embed_path": embed,
+                }
+            )
+        plan_path = None
+        if key:
+            try:
+                plan_path = safe_path(Path(project["plans_path"]), key)
+            except HTTPException:
+                plan_path = None
+        groups.append({"plan_name": key, "plan_path": plan_path, "medias": medias})
+
+    pdf_bytes = build_pdf(
+        groups=groups,
+        page_size=page_size,
+        header_text=header_text,
+        footer_text=footer_text,
+    )
+    filename = f"{project['slug']}-stampa.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ----------------------- per-project mutations -----------------------

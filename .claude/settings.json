@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo \"=== .gitignore ===\" && cat .gitignore 2>/dev/null; echo \"=== .env \\(mascherato\\) ===\" && sed 's/=.*/=.../' .env 2>/dev/null; echo \"=== .env.example ===\" && cat .env.example 2>/dev/null)"
+      "Bash(echo \"=== .gitignore ===\" && cat .gitignore 2>/dev/null; echo \"=== .env \\(mascherato\\) ===\" && sed 's/=.*/=.../' .env 2>/dev/null; echo \"=== .env.example ===\" && cat .env.example 2>/dev/null)",
+      "Bash(python3 -m py_compile app/main.py app/pdf_export.py)",
+      "Bash(sudo docker compose up -d --build)",
+      "Bash(sudo docker compose logs --tail 15 wedge)",
+      "Bash(sudo docker compose exec -T wedge python -c \"import app.main, app.pdf_export; print\\('IMPORTS OK'\\)\")",
+      "Bash(sudo docker compose exec -T wedge python -c ' *)"
     ],
     "additionalDirectories": [
       "/home/fosco/FoscoDocker/Wedge"

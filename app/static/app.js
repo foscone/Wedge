@@ -31,6 +31,7 @@ let mode = "place";
 let timeline = [];
 let pinningNote = false;
 let pendingSharedMedia = new URLSearchParams(location.search).get('media') || null;
+let selectedForPdf = new Set();
 
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
@@ -137,7 +138,9 @@ function renderMediaList() {
     const div = document.createElement("div");
     div.className = "photo-item" + (selectedMedia === p.name ? " selected" : "");
     const badge = p.kind === "video" ? '<span class="kind-badge">▶</span>' : '';
+    const checked = selectedForPdf.has(p.name) ? "checked" : "";
     div.innerHTML = `
+      <input type="checkbox" class="pdf-check" ${checked} title="Includi nel PDF">
       <div class="thumb-wrap">
         <img src="${API_BASE}/thumb/${encodeURIComponent(p.name)}" alt="">
         ${badge}
@@ -145,9 +148,31 @@ function renderMediaList() {
       <span class="name">${p.name}${p.taken_at ? `<br><span style="color:#888;font-size:10px">${new Date(p.taken_at).toLocaleString()}</span>` : ''}</span>
       <span class="dot ${p.status}" title="${p.status}"></span>
     `;
+    const cb = div.querySelector(".pdf-check");
+    cb.onclick = (e) => {
+      e.stopPropagation();
+      if (cb.checked) selectedForPdf.add(p.name);
+      else selectedForPdf.delete(p.name);
+      updatePdfCount();
+    };
     div.onclick = () => selectMedia(p.name);
     list.appendChild(div);
   }
+  updatePdfCount();
+}
+
+function updatePdfCount() {
+  const n = selectedForPdf.size;
+  const btn = $("btnExportPdf");
+  if (btn) btn.textContent = `Esporta PDF (${n})`;
+  const sel = $("pdfSelCount");
+  if (sel) sel.textContent = n;
+}
+
+function currentFilteredMedia() {
+  return state.media
+    .filter(p => filter === "all" || p.status === filter)
+    .filter(p => mode !== "view" || photoMatchesTagFilter(p));
 }
 
 function selectMedia(name) {
@@ -735,6 +760,75 @@ function renderTagTypesList() {
 
 $("manageTags").onclick = () => { renderTagTypesList(); $("tagsModal").classList.remove("hidden"); };
 $("closeTagsModal").onclick = () => $("tagsModal").classList.add("hidden");
+
+// ----------------------- selezione + esportazione PDF -----------------------
+$("btnSelectAll").onclick = () => {
+  for (const p of currentFilteredMedia()) selectedForPdf.add(p.name);
+  renderMediaList();
+};
+$("btnSelectNone").onclick = () => {
+  selectedForPdf.clear();
+  renderMediaList();
+};
+
+$("btnExportPdf").onclick = () => {
+  if (selectedForPdf.size === 0) {
+    alert("Seleziona almeno una foto (spunta le caselle nella lista).");
+    return;
+  }
+  const placed = state.media.filter(p => selectedForPdf.has(p.name) && p.status === "placed").length;
+  $("pdfModalInfo").textContent =
+    `${selectedForPdf.size} foto selezionate · ${placed} con cono ottico sulla planimetria.`;
+  $("pdfHeader").value = localStorage.getItem("wedge_pdf_header") || "";
+  $("pdfFooter").value = localStorage.getItem("wedge_pdf_footer") || "";
+  const savedSize = localStorage.getItem("wedge_pdf_size") || "A4";
+  const sizeRadio = document.querySelector(`input[name="pdfSize"][value="${savedSize}"]`);
+  if (sizeRadio) sizeRadio.checked = true;
+  $("pdfModal").classList.remove("hidden");
+};
+$("pdfCancel").onclick = () => $("pdfModal").classList.add("hidden");
+
+$("pdfGenerate").onclick = async () => {
+  const page_size = document.querySelector('input[name="pdfSize"]:checked')?.value || "A4";
+  const header_text = $("pdfHeader").value;
+  const footer_text = $("pdfFooter").value;
+  localStorage.setItem("wedge_pdf_header", header_text);
+  localStorage.setItem("wedge_pdf_footer", footer_text);
+  localStorage.setItem("wedge_pdf_size", page_size);
+  // ordina i nomi selezionati come compaiono nella lista (per data/nome)
+  const ordered = state.media
+    .filter(p => selectedForPdf.has(p.name))
+    .slice()
+    .sort((a, b) => (a.taken_at || "").localeCompare(b.taken_at || "") || a.name.localeCompare(b.name))
+    .map(p => p.name);
+  const btn = $("pdfGenerate");
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Generazione…";
+  try {
+    const r = await api("/export_pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ media_names: ordered, page_size, header_text, footer_text }),
+    });
+    if (!r.ok) { alert("Errore durante la generazione del PDF."); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${SLUG}-stampa.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    $("pdfModal").classList.add("hidden");
+  } catch (e) {
+    alert("Errore durante la generazione del PDF.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+};
 $("addType").onclick = async () => {
   const name = $("newTypeName").value.trim();
   const color = $("newTypeColor").value;
