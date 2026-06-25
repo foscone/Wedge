@@ -2,12 +2,12 @@
 selezionate + le foto stesse, raggruppate per planimetria.
 
 La geometria dei coni replica esattamente quella del canvas frontend
-(app/static/app.js): x,y in pixel della planimetria (origine in alto a
-sinistra, y verso il basso), angolo in gradi con atan2(dy,dx) in spazio
-schermo, lunghezza del cono = 12% del lato maggiore della planimetria.
-Per il PDF (origine in basso a sinistra) si calcolano i punti in spazio
-pixel e si applica la stessa trasformazione usata per l'immagine, così il
-cono combacia con quanto visto a schermo.
+(app/static/app.js): x,y in pixel ORIGINALI della planimetria (origine in
+alto a sinistra, y verso il basso), angolo in gradi con atan2(dy,dx) in
+spazio schermo, lunghezza del cono = 12% del lato maggiore della planimetria.
+La planimetria può essere declassata (downscale) per tenere il PDF leggero,
+ma la mappatura dei coni usa SEMPRE le dimensioni originali, altrimenti i
+coni finiscono fuori posto.
 """
 
 import io
@@ -23,18 +23,22 @@ from reportlab.pdfgen import canvas as pdfcanvas
 
 PAGE_SIZES = {"A4": A4, "A3": A3}
 
-MARGIN = 1.4 * cm
-GUTTER = 0.5 * cm
-MIN_SHORT_SIDE = 8 * cm        # lato corto minimo di ogni foto
-CAPTION_H = 0.5 * cm           # spazio per l'etichetta sotto ogni foto
-CONE_FRAC = 0.12               # lunghezza cono = 12% del lato maggiore (come il frontend)
-PLAN_MAX_HEIGHT_FRAC = 0.58    # quota massima dell'area contenuto per la planimetria
-MAX_IMG_PX = 1800             # downscale delle immagini per tenere il PDF leggero
+MARGIN = 1.2 * cm              # margini laterali del contenuto
+EDGE = 0.55 * cm              # distanza intestazione/piè dal bordo
+GUTTER = 0.4 * cm             # spazio tra le foto
+CAPTION_H = 0.15 * cm         # piccolo respiro sotto ogni riga di foto
+MAX_PHOTO_H = 7 * cm          # altezza massima di una foto (foto più piccole = più file)
+CONE_FRAC = 0.12              # lunghezza cono = 12% del lato maggiore (come il frontend)
+PLAN_MAX_HEIGHT_FRAC = 0.55   # quota massima dell'area contenuto per la planimetria
+MAX_IMG_PX = 1800            # downscale delle immagini per tenere il PDF leggero
 
 # Colori coni (coerenti con il frontend, versione non-evidenziata)
 COL_PHOTO = (76 / 255, 200 / 255, 140 / 255)   # verde
 COL_VIDEO = (220 / 255, 150 / 255, 60 / 255)   # arancio
 COL_BADGE = (0.16, 0.42, 1.0)                  # blu del numero
+
+HEAD_FONT = ("Helvetica", 9)
+LINE_H = 12
 
 
 def _load_image(path: Path, downscale: bool = True) -> Optional[Image.Image]:
@@ -49,6 +53,22 @@ def _load_image(path: Path, downscale: bool = True) -> Optional[Image.Image]:
         return None
 
 
+def _load_plan(path: Path):
+    """Ritorna (immagine_per_embed, larghezza_orig, altezza_orig) oppure
+    (None, 0, 0). Le dimensioni originali servono per posizionare i coni."""
+    try:
+        im = Image.open(path)
+        im = ImageOps.exif_transpose(im)
+        im = im.convert("RGB")
+        ow, oh = im.size
+        if max(im.size) > MAX_IMG_PX:
+            im = im.copy()
+            im.thumbnail((MAX_IMG_PX, MAX_IMG_PX))
+        return im, ow, oh
+    except Exception:
+        return None, 0, 0
+
+
 class _Builder:
     def __init__(self, page_size, header_text: str, footer_text: str):
         self.W, self.H = page_size
@@ -57,40 +77,50 @@ class _Builder:
         self.buf = io.BytesIO()
         self.c = pdfcanvas.Canvas(self.buf, pagesize=page_size)
 
-        head_h = (len(self.header_lines) * 12 + 8) if self.header_lines else 0
-        foot_h = (len(self.footer_lines) * 12 + 8) if self.footer_lines else 0
+        nh, nf = len(self.header_lines), len(self.footer_lines)
+        # blocco intestazione: testo (vicino al bordo) + riga separatrice sotto
+        self._head_sep_y = self.H - EDGE - nh * LINE_H - 3 if nh else None
+        self._foot_sep_y = EDGE + nf * LINE_H + 3 if nf else None
+
         self.content_x0 = MARGIN
         self.content_w = self.W - 2 * MARGIN
-        self.content_top = self.H - MARGIN - head_h
-        self.content_bottom = MARGIN + foot_h
+        self.content_top = (self._head_sep_y - 6) if nh else (self.H - EDGE)
+        self.content_bottom = (self._foot_sep_y + 6) if nf else (EDGE)
         self.content_h = self.content_top - self.content_bottom
 
-        self.y = None            # cursore verticale (bordo superiore disponibile)
+        self.y = None
         self._started = False
         self._row = []
-        self._row_w = 0.0
+        self._ncols = 2
+        self._cell_w = self.content_w
+        self._max_h = MAX_PHOTO_H
 
-    # -- intestazione / piè di pagina -------------------------------------
+    # -- intestazione / piè di pagina (compatti, riga solo sotto al testo) --
     def _draw_header_footer(self):
         c = self.c
-        c.setFont("Helvetica", 9)
+        c.setFont(*HEAD_FONT)
         c.setFillGray(0.25)
+        c.setStrokeGray(0.65)
+        c.setLineWidth(0.5)
         if self.header_lines:
-            y = self.H - MARGIN - 9
+            y = self.H - EDGE - 9
+            maxw = 0.0
             for line in self.header_lines:
                 c.drawCentredString(self.W / 2, y, line)
-                y -= 12
-            c.setStrokeGray(0.7)
-            c.setLineWidth(0.5)
-            c.line(MARGIN, self.content_top + 2, self.W - MARGIN, self.content_top + 2)
+                maxw = max(maxw, c.stringWidth(line, *HEAD_FONT))
+                y -= LINE_H
+            half = maxw / 2 + 8
+            c.line(self.W / 2 - half, self._head_sep_y, self.W / 2 + half, self._head_sep_y)
         if self.footer_lines:
-            y = MARGIN + (len(self.footer_lines) - 1) * 12
+            n = len(self.footer_lines)
+            y = EDGE + (n - 1) * LINE_H
+            maxw = 0.0
             for line in self.footer_lines:
                 c.drawCentredString(self.W / 2, y, line)
-                y -= 12
-            c.setStrokeGray(0.7)
-            c.setLineWidth(0.5)
-            c.line(MARGIN, self.content_bottom - 2, self.W - MARGIN, self.content_bottom - 2)
+                maxw = max(maxw, c.stringWidth(line, *HEAD_FONT))
+                y -= LINE_H
+            half = maxw / 2 + 8
+            c.line(self.W / 2 - half, self._foot_sep_y, self.W / 2 + half, self._foot_sep_y)
 
     def new_page(self):
         if self._started:
@@ -100,20 +130,20 @@ class _Builder:
         self._started = True
 
     # -- planimetria + coni ------------------------------------------------
-    def draw_plan(self, plan_img: Image.Image, medias: list[dict]):
-        iw, ih = plan_img.size
+    def draw_plan(self, plan_img: Image.Image, ow: int, oh: int, medias: list[dict]):
         max_w = self.content_w
         max_h = self.content_h * PLAN_MAX_HEIGHT_FRAC
-        s = min(max_w / iw, max_h / ih)
-        draw_w, draw_h = iw * s, ih * s
+        s = min(max_w / ow, max_h / oh)
+        draw_w, draw_h = ow * s, oh * s
         x0 = self.content_x0 + (self.content_w - draw_w) / 2
         y0 = self.y - draw_h
         self.c.drawImage(ImageReader(plan_img), x0, y0, draw_w, draw_h)
 
+        # px,py in pixel ORIGINALI della planimetria -> coordinate PDF
         def to_pdf(px, py):
-            return (x0 + px * s, y0 + (ih - py) * s)
+            return (x0 + px * s, y0 + (oh - py) * s)
 
-        cone_len = max(iw, ih) * CONE_FRAC
+        cone_len = max(ow, oh) * CONE_FRAC
         for m in medias:
             self._draw_cone(to_pdf, m, cone_len)
         self.y = y0 - 0.5 * cm
@@ -165,23 +195,26 @@ class _Builder:
         c.drawCentredString(cx, cy - 3, str(number))
         c.restoreState()
 
-    # -- foto in flusso a griglia -----------------------------------------
+    # -- foto in righe ad altezza uniforme, impaccate (poco bianco) --------
+    def setup_grid(self):
+        # altezza uniforme delle foto: così le verticali non lasciano bianco
+        # ai lati e ci stanno almeno due file di foto per pagina.
+        self._target_h = min(MAX_PHOTO_H, (self.content_h - 2 * CAPTION_H - GUTTER) / 2)
+        self._row = []
+        self._row_w = 0.0
+
     def add_photo(self, img: Image.Image, number: int):
         iw, ih = img.size
-        short = min(iw, ih)
-        s = MIN_SHORT_SIDE / short
-        w, h = iw * s, ih * s
-        if w > self.content_w:
-            f = self.content_w / w
-            w, h = w * f, h * f
-        max_h = self.content_h - CAPTION_H
-        if h > max_h:
-            f = max_h / h
-            w, h = w * f, h * f
-        if self._row and self._row_w + GUTTER + w > self.content_w + 0.01:
+        aspect = iw / ih if ih else 1.0
+        h = self._target_h
+        w = h * aspect
+        if w > self.content_w:  # foto molto panoramica: sta su tutta la riga
+            w = self.content_w
+            h = w / aspect
+        if self._row and self._row_w + GUTTER + w > self.content_w + 0.5:
             self.flush_row()
         self._row.append((img, w, h, number))
-        self._row_w += (GUTTER if len(self._row) > 1 else 0) + w
+        self._row_w += (GUTTER if self._row else 0) + w
 
     def flush_row(self):
         if not self._row:
@@ -237,17 +270,17 @@ def build_pdf(
         b.new_page()
 
         plan_path = group.get("plan_path")
-        plan_img = _load_image(plan_path, downscale=True) if plan_path else None
+        plan_img, ow, oh = _load_plan(plan_path) if plan_path else (None, 0, 0)
         if plan_img is not None:
-            b.draw_plan(plan_img, medias)
+            b.draw_plan(plan_img, ow, oh, medias)
         else:
-            # Nessuna planimetria (foto non posizionate o planimetria illeggibile)
             b.c.setFont("Helvetica-Oblique", 10)
             b.c.setFillGray(0.4)
             label = group.get("plan_name") or "Foto senza planimetria"
             b.c.drawString(b.content_x0, b.y - 12, label)
             b.y -= 0.9 * cm
 
+        b.setup_grid()
         for m in medias:
             img = _load_image(m.get("embed_path")) if m.get("embed_path") else None
             if img is not None:

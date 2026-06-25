@@ -6,7 +6,9 @@
       "Bash(sudo docker compose up -d --build)",
       "Bash(sudo docker compose logs --tail 15 wedge)",
       "Bash(sudo docker compose exec -T wedge python -c \"import app.main, app.pdf_export; print\\('IMPORTS OK'\\)\")",
-      "Bash(sudo docker compose exec -T wedge python -c ' *)"
+      "Bash(sudo docker compose exec -T wedge python -c ' *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -m py_compile app/pdf_export.py)"
     ],
     "additionalDirectories": [
       "/home/fosco/FoscoDocker/Wedge"
