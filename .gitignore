@@ -7,6 +7,10 @@ venv/
 .env.*
 !.env.example
 
+# Override Compose specifico per macchina (mount progetti locali/prod)
+docker-compose.override.yml
+!docker-compose.override.yml.example
+
 data/*.db
 data/*.db-journal
 data/thumbs/

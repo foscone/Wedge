@@ -1,0 +1,16 @@
+services:
+  wedge:
+    volumes:
+      # Bind-mount dei progetti, specifici di QUESTA macchina.
+      # Convenzione: monta una cartella host (es. casa-rossi/) sotto
+      # /projects/<nome>. La cartella host DEVE contenere due sottocartelle:
+      # photos/ e plans/. Poi in /admin di Wedge selezioni "casa-rossi" dal
+      # menù a tendina.
+      #
+      # Copia questo file in `docker-compose.override.yml` (gitignorato) e
+      # adatta i percorsi. `docker compose up` lo unisce automaticamente al
+      # docker-compose.yml.
+      #
+      # Esempi:
+      # - /percorso/host/casa-rossi:/projects/casa-rossi:ro
+      # - /percorso/host/villa-bianchi:/projects/villa-bianchi:ro

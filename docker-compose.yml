@@ -10,11 +10,12 @@ services:
       - DATA_DIR=/data
       - THUMBS_DIR=/data/thumbs
     volumes:
-      - ./data:/data
-      # Aggiungi un bind-mount per ogni progetto. Convenzione: monta una
-      # cartella host (es. casa-rossi/) sotto /projects/<nome>. La cartella
-      # host DEVE contenere due sottocartelle: photos/ e plans/.
-      # Esempio:
-      # - /percorso/host/casa-rossi:/projects/casa-rossi:ro
-      # Poi in /admin di Wedge selezioni "casa-rossi" dal menù a tendina.
+      # Percorso host della cartella dati: personalizzabile via .env
+      # (DATA_DIR_HOST). Default ./data se non impostato.
+      - ${DATA_DIR_HOST:-./data}:/data
+      # I bind-mount dei progetti NON vanno qui (cambiano tra locale e
+      # produzione). Mettili in docker-compose.override.yml — vedi
+      # docker-compose.override.yml.example. Quel file è gitignorato e viene
+      # unito automaticamente da `docker compose up`, così non ci sono
+      # conflitti tra le diverse macchine.
     restart: unless-stopped

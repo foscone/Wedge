@@ -9,6 +9,9 @@ spegni:
 rebuild-dopo-modifiche:
 	sudo docker compose up -d --build
 
+riavvia-dopo-modifiche-cartelle-progetti:
+	make spegni && make avvia
+
 # Elimina tutti i dati di un singolo progetto: riga DB (cascade su media, tag,
 # media_tags, seen, tag_types) e thumbnail in data/thumbs/<id>/.
 # I file originali sui bind-mount (photos_path / plans_path) NON vengono toccati.

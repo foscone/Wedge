@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"=== .gitignore ===\" && cat .gitignore 2>/dev/null; echo \"=== .env \\(mascherato\\) ===\" && sed 's/=.*/=.../' .env 2>/dev/null; echo \"=== .env.example ===\" && cat .env.example 2>/dev/null)"
+    ],
+    "additionalDirectories": [
+      "/home/fosco/FoscoDocker/Wedge"
+    ]
+  }
+}
