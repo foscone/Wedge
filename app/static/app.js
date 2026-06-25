@@ -520,14 +520,15 @@ $("fov").addEventListener("input", (e) => {
 });
 $("filter").addEventListener("change", (e) => { filter = e.target.value; renderMediaList(); });
 
-$("btnSkip").onclick = async () => {
-  if (!selectedMedia) return;
+async function skipSelected() {
+  if (!selectedMedia || !canEdit() || mode !== "place") return;
   await api("/skip", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: selectedMedia }) });
   const idx = state.media.findIndex(p => p.name === selectedMedia);
   await loadState();
   const next = state.media.find((p, i) => i > idx && p.status === 'unplaced');
   if (next) selectMedia(next.name);
-};
+}
+$("btnSkip").onclick = skipSelected;
 $("btnReset").onclick = async () => {
   if (!selectedMedia) return;
   await api("/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: selectedMedia }) });
@@ -565,8 +566,17 @@ $("tlNext").onclick = () => { const i = Math.min(timeline.length - 1, (+$("tlRan
 window.addEventListener("resize", () => { resizeCanvas(); draw(); });
 window.addEventListener("keydown", (e) => {
   if (e.key === "0" && (e.ctrlKey || e.metaKey)) { fitPlan(); draw(); e.preventDefault(); return; }
-  if (mode !== "view") return;
-  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  const t = e.target.tagName;
+  if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (mode === "place") {
+    // S = salta la foto selezionata, senza usare il bottone
+    if ((e.key === "s" || e.key === "S") && canEdit() && selectedMedia) {
+      skipSelected();
+      e.preventDefault();
+    }
+    return;
+  }
   if (e.key === "ArrowLeft") { $("tlPrev").click(); e.preventDefault(); }
   if (e.key === "ArrowRight") { $("tlNext").click(); e.preventDefault(); }
 });
