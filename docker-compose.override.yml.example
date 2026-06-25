@@ -2,15 +2,29 @@ services:
   wedge:
     volumes:
       # Bind-mount dei progetti, specifici di QUESTA macchina.
-      # Convenzione: monta una cartella host (es. casa-rossi/) sotto
-      # /projects/<nome>. La cartella host DEVE contenere due sottocartelle:
-      # photos/ e plans/. Poi in /admin di Wedge selezioni "casa-rossi" dal
-      # menù a tendina.
+      #
+      # Per ogni progetto monti DUE cartelle host indipendenti dentro
+      # /projects/<nome>:
+      #   - le foto      -> /projects/<nome>/photos
+      #   - le planimetrie -> /projects/<nome>/plans
+      # Così puoi usare la cartella foto che hai già nel tuo archivio e una
+      # cartella planimetrie creata apposta, anche in posizioni diverse del
+      # disco. Poi in /admin di Wedge selezioni "<nome>" dal menù a tendina.
+      #
+      # IMPORTANTE: monta SEMPRE in sola lettura con ":ro". Wedge non scrive
+      # mai in queste cartelle (legge solo i file e gli EXIF; le thumbnail le
+      # genera in /data/thumbs), e ":ro" lo garantisce anche a livello di
+      # sistema operativo: le tue cartelle di lavoro non possono essere
+      # modificate o manomesse.
       #
       # Copia questo file in `docker-compose.override.yml` (gitignorato) e
       # adatta i percorsi. `docker compose up` lo unisce automaticamente al
       # docker-compose.yml.
       #
-      # Esempi:
-      # - /percorso/host/casa-rossi:/projects/casa-rossi:ro
-      # - /percorso/host/villa-bianchi:/projects/villa-bianchi:ro
+      # Esempio (progetto "casa-rossi"):
+      # - /mnt/archivio/CasaRossi/Foto:/projects/casa-rossi/photos:ro
+      # - /mnt/wedge-planimetrie/casa-rossi:/projects/casa-rossi/plans:ro
+      #
+      # Esempio (secondo progetto "villa-bianchi"):
+      # - /mnt/archivio/2024/VillaBianchi/foto:/projects/villa-bianchi/photos:ro
+      # - /mnt/wedge-planimetrie/villa-bianchi:/projects/villa-bianchi/plans:ro

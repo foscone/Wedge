@@ -31,15 +31,24 @@ istanza può ospitare più progetti, ognuno con percorsi e password proprie.
    - `SECRET_KEY` — stringa lunga, casuale e segreta (firma i cookie di sessione).
      Generala con: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
-2. In `docker-compose.yml` aggiungi un bind-mount per ogni progetto.
-   Convenzione: monta una cartella host sotto `/projects/<nome>`. La
-   cartella host **deve** contenere due sottocartelle: `photos/` e `plans/`.
+2. Aggiungi i bind-mount dei progetti in `docker-compose.override.yml`
+   (copialo da `docker-compose.override.yml.example`; è gitignorato, così
+   locale e produzione hanno mount diversi senza conflitti). Per ogni
+   progetto monti **due cartelle host indipendenti** dentro `/projects/<nome>`:
+   le foto sotto `photos/` e le planimetrie sotto `plans/`. Puoi quindi usare
+   la cartella foto che hai già nel tuo archivio e una cartella planimetrie
+   creata apposta, anche in punti diversi del disco.
    ```yaml
-   volumes:
-     - ./data:/data
-     - /percorso/host/casa-rossi:/projects/casa-rossi:ro
+   services:
+     wedge:
+       volumes:
+         - /mnt/archivio/CasaRossi/Foto:/projects/casa-rossi/photos:ro
+         - /mnt/wedge-planimetrie/casa-rossi:/projects/casa-rossi/plans:ro
    ```
-   (`:ro` se non vuoi che il container possa modificare i file originali)
+   **Monta sempre in sola lettura con `:ro`.** Wedge non scrive mai in queste
+   cartelle (legge solo i file e gli EXIF; le thumbnail le genera in
+   `/data/thumbs`), e `:ro` lo garantisce anche a livello di sistema: le tue
+   cartelle di lavoro dell'archivio non possono essere modificate o manomesse.
 
 3. `docker compose up -d --build` (o `make avvia`)
 
@@ -149,15 +158,24 @@ instance can host multiple projects, each with its own paths and passwords.
    - `SECRET_KEY` — a long, random, secret string (signs session cookies).
      Generate one with: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
-2. In `docker-compose.yml` add a bind-mount for each project. Convention:
-   mount a host folder under `/projects/<name>`. The host folder **must**
-   contain two subfolders: `photos/` and `plans/`.
+2. Add the project bind-mounts in `docker-compose.override.yml` (copy it from
+   `docker-compose.override.yml.example`; it is gitignored, so local and
+   production can mount different folders without conflicts). For each project
+   mount **two independent host folders** under `/projects/<name>`: the photos
+   under `photos/` and the plans under `plans/`. You can reuse the photo folder
+   you already have in your archive and a plans folder made on purpose, even in
+   different places on disk.
    ```yaml
-   volumes:
-     - ./data:/data
-     - /host/path/casa-rossi:/projects/casa-rossi:ro
+   services:
+     wedge:
+       volumes:
+         - /mnt/archive/CasaRossi/Photos:/projects/casa-rossi/photos:ro
+         - /mnt/wedge-plans/casa-rossi:/projects/casa-rossi/plans:ro
    ```
-   (`:ro` if you don't want the container to be able to modify the source files)
+   **Always mount read-only with `:ro`.** Wedge never writes to these folders
+   (it only reads the files and EXIF; thumbnails go to `/data/thumbs`), and
+   `:ro` guarantees this at the OS level too: your archive working folders
+   cannot be modified or tampered with.
 
 3. `docker compose up -d --build` (or `make avvia`)
 
