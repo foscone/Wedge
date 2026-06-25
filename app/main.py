@@ -33,15 +33,20 @@ THUMBS_DIR = Path(os.environ.get("THUMBS_DIR", "/data/thumbs"))
 PROJECTS_ROOT = Path(os.environ.get("PROJECTS_ROOT", "/projects"))
 ROOT_PATH = os.environ.get("ROOT_PATH", "")
 
+# Cache dei PDF di planimetria rasterizzati in PNG (le planimetrie possono
+# essere immagini o PDF; il browser e l'export lavorano sempre sull'immagine).
+PLAN_CACHE_DIR = DATA_DIR / "plan_cache"
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 THUMBS_DIR.mkdir(parents=True, exist_ok=True)
+PLAN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = DATA_DIR / "wedge.db"
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".bmp"}
 VIDEO_EXT = {".mp4", ".mov", ".webm", ".mkv", ".m4v", ".avi"}
 MEDIA_EXT = IMG_EXT | VIDEO_EXT
-PLAN_EXT = {".jpg", ".jpeg", ".png", ".webp", ".svg", ".gif"}
+PLAN_EXT = {".jpg", ".jpeg", ".png", ".webp", ".svg", ".gif", ".pdf"}
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 
@@ -562,10 +567,11 @@ def admin_delete_project(slug: str, request: Request):
     with db() as c:
         c.execute("DELETE FROM projects WHERE id=?", (project["id"],))
         c.commit()
-    # also drop the per-project thumb directory
-    d = THUMBS_DIR / str(project["id"])
-    if d.exists():
-        shutil.rmtree(d, ignore_errors=True)
+    # also drop the per-project thumb directory and rendered-plan cache
+    for base in (THUMBS_DIR, PLAN_CACHE_DIR):
+        d = base / str(project["id"])
+        if d.exists():
+            shutil.rmtree(d, ignore_errors=True)
     return {"ok": True}
 
 
@@ -689,11 +695,46 @@ def get_thumb(slug: str, name: str, request: Request):
     return FileResponse(tp)
 
 
+def render_pdf_plan(src: Path, dst: Path, target_w: int = 2000) -> bool:
+    """Rasterizza la prima pagina di un PDF planimetria in PNG."""
+    try:
+        import fitz  # PyMuPDF (import lazy: i piani-immagine funzionano comunque)
+
+        doc = fitz.open(src)
+        try:
+            page = doc.load_page(0)
+            zoom = (target_w / page.rect.width) if page.rect.width else 2.0
+            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+            pix.save(dst)
+        finally:
+            doc.close()
+        return dst.exists() and dst.stat().st_size > 0
+    except Exception:
+        return False
+
+
+def rendered_plan_path(project: sqlite3.Row, name: str) -> Path:
+    """Percorso dell'immagine della planimetria da servire/usare. Per i PDF
+    restituisce il PNG rasterizzato (con cache); per le immagini il file
+    originale. Frontend ed export usano la STESSA immagine, così le
+    coordinate dei coni restano coerenti."""
+    src = safe_path(Path(project["plans_path"]), name)
+    if src.suffix.lower() != ".pdf":
+        return src
+    key = hashlib.sha1(f"{name}-{src.stat().st_mtime_ns}".encode()).hexdigest()
+    cdir = PLAN_CACHE_DIR / str(project["id"])
+    cdir.mkdir(parents=True, exist_ok=True)
+    dst = cdir / f"{key}.png"
+    if not dst.exists():
+        if not render_pdf_plan(src, dst):
+            raise HTTPException(500, "impossibile rasterizzare il PDF della planimetria")
+    return dst
+
+
 @app.get("/api/projects/{slug}/plan/{name}")
 def get_plan(slug: str, name: str, request: Request):
     project = project_for_request(slug, "view", request)
-    p = safe_path(Path(project["plans_path"]), name)
-    return FileResponse(p)
+    return FileResponse(rendered_plan_path(project, name))
 
 
 @app.post("/api/projects/{slug}/export_pdf")
@@ -764,7 +805,7 @@ def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
         plan_path = None
         if key:
             try:
-                plan_path = safe_path(Path(project["plans_path"]), key)
+                plan_path = rendered_plan_path(project, key)
             except HTTPException:
                 plan_path = None
         groups.append({"plan_name": key, "plan_path": plan_path, "medias": medias})

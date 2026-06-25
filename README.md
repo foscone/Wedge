@@ -72,7 +72,8 @@ serviti solo via API autenticata.
 ### Tipi di file supportati
 - **Foto**: `.jpg .jpeg .png .webp .gif .tif .tiff .bmp`
 - **Video**: `.mp4 .mov .webm .mkv .m4v .avi`
-- **Planimetrie**: `.jpg .jpeg .png .webp .svg .gif`
+- **Planimetrie**: `.jpg .jpeg .png .webp .svg .gif .pdf` (i PDF vengono
+  rasterizzati automaticamente: viene usata la prima pagina)
 
 Le thumbnail dei video sono generate con ffmpeg al primo accesso.
 
@@ -199,7 +200,8 @@ only served through the authenticated API.
 ### Supported file types
 - **Photos**: `.jpg .jpeg .png .webp .gif .tif .tiff .bmp`
 - **Videos**: `.mp4 .mov .webm .mkv .m4v .avi`
-- **Plans**: `.jpg .jpeg .png .webp .svg .gif`
+- **Plans**: `.jpg .jpeg .png .webp .svg .gif .pdf` (PDFs are rasterized
+  automatically: the first page is used)
 
 Video thumbnails are generated with ffmpeg on first access.
 
