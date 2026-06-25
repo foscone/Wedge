@@ -48,6 +48,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pdf-field textarea { width: 100%; box-sizing: border-box; background: #1f1f25; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 6px; font: inherit; resize: vertical; }
 .pdf-radios { display: flex; gap: 16px; }
 .pdf-radios label { display: flex; align-items: center; gap: 6px; color: #eee; font-size: 13px; cursor: pointer; }
+.pdf-check-line { display: flex; align-items: flex-start; gap: 8px; color: #eee; font-size: 13px; cursor: pointer; margin-bottom: 8px; }
+.pdf-check-line input { margin-top: 2px; flex-shrink: 0; accent-color: #6cf; }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot.unplaced { background: #f80; }
 .dot.placed { background: #4c8; }

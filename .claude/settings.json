@@ -9,10 +9,12 @@
       "Bash(sudo docker compose exec -T wedge python -c ' *)",
       "Bash(python3 -c ' *)",
       "Bash(python3 -m py_compile app/pdf_export.py)",
-      "Bash(node -e \"require\\('fs'\\).readFileSync\\('app/static/app.js','utf8'\\); console.log\\('app.js leggibile'\\)\")"
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('app/static/app.js','utf8'\\); console.log\\('app.js leggibile'\\)\")",
+      "Bash(rm -f data/_o_*.pdf *)"
     ],
     "additionalDirectories": [
-      "/home/fosco/FoscoDocker/Wedge"
+      "/home/fosco/FoscoDocker/Wedge",
+      "/home/fosco/FoscoDocker/Wedge/data"
     ]
   }
 }

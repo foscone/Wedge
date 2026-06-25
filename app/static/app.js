@@ -797,6 +797,8 @@ $("btnExportPdf").onclick = () => {
   const savedOrient = localStorage.getItem("wedge_pdf_orient") || "portrait";
   const orientRadio = document.querySelector(`input[name="pdfOrient"][value="${savedOrient}"]`);
   if (orientRadio) orientRadio.checked = true;
+  $("pdfPlanFull").checked = localStorage.getItem("wedge_pdf_planfull") === "1";
+  $("pdfPlanNoChrome").checked = localStorage.getItem("wedge_pdf_nochrome") === "1";
   $("pdfModal").classList.remove("hidden");
 };
 $("pdfCancel").onclick = () => $("pdfModal").classList.add("hidden");
@@ -806,10 +808,14 @@ $("pdfGenerate").onclick = async () => {
   const orientation = document.querySelector('input[name="pdfOrient"]:checked')?.value || "portrait";
   const header_text = $("pdfHeader").value;
   const footer_text = $("pdfFooter").value;
+  const plan_full_page = $("pdfPlanFull").checked;
+  const plan_no_chrome = $("pdfPlanNoChrome").checked;
   localStorage.setItem("wedge_pdf_header", header_text);
   localStorage.setItem("wedge_pdf_footer", footer_text);
   localStorage.setItem("wedge_pdf_size", page_size);
   localStorage.setItem("wedge_pdf_orient", orientation);
+  localStorage.setItem("wedge_pdf_planfull", plan_full_page ? "1" : "0");
+  localStorage.setItem("wedge_pdf_nochrome", plan_no_chrome ? "1" : "0");
   // ordina i nomi selezionati come compaiono nella lista (per data/nome)
   const ordered = state.media
     .filter(p => selectedForPdf.has(p.name))
@@ -824,7 +830,7 @@ $("pdfGenerate").onclick = async () => {
     const r = await api("/export_pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ media_names: ordered, page_size, orientation, header_text, footer_text }),
+      body: JSON.stringify({ media_names: ordered, page_size, orientation, header_text, footer_text, plan_full_page, plan_no_chrome }),
     });
     if (!r.ok) { alert("Errore durante la generazione del PDF."); return; }
     const blob = await r.blob();

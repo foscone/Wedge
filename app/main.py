@@ -713,6 +713,8 @@ def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
         orientation = "portrait"
     header_text = (payload.get("header_text") or "")[:2000]
     footer_text = (payload.get("footer_text") or "")[:2000]
+    plan_full_page = bool(payload.get("plan_full_page"))
+    plan_no_chrome = bool(payload.get("plan_no_chrome"))
 
     with db() as c:
         rows = {
@@ -773,6 +775,8 @@ def export_pdf(slug: str, request: Request, payload: dict = Body(...)):
         orientation=orientation,
         header_text=header_text,
         footer_text=footer_text,
+        plan_full_page=plan_full_page,
+        plan_no_chrome=plan_no_chrome,
     )
     filename = f"{project['slug']}-stampa.pdf"
     return Response(

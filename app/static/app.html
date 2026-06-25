@@ -122,6 +122,10 @@
       <label for="pdfFooter">Piè di pagina</label>
       <textarea id="pdfFooter" rows="2" placeholder="Es. Tel. … · email … · P.IVA …"></textarea>
     </div>
+    <div class="pdf-field">
+      <label class="pdf-check-line"><input type="checkbox" id="pdfPlanFull"> Planimetria a pagina intera (le foto vanno nelle pagine successive)</label>
+      <label class="pdf-check-line"><input type="checkbox" id="pdfPlanNoChrome"> Niente intestazione/piè nelle pagine con la planimetria</label>
+    </div>
     <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
       <button id="pdfCancel">Annulla</button>
       <button id="pdfGenerate">Genera PDF</button>

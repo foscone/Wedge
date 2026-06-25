@@ -88,12 +88,15 @@ class _Builder:
         self.content_bottom = (self._foot_sep_y + 6) if nf else (EDGE)
         self.content_h = self.content_top - self.content_bottom
 
+        # area utile della pagina corrente (varia se la pagina è senza
+        # intestazione/piè: in quel caso il contenuto può usare tutto il foglio)
+        self.cur_top = self.content_top
+        self.cur_bottom = self.content_bottom
+
         self.y = None
         self._started = False
         self._row = []
-        self._ncols = 2
-        self._cell_w = self.content_w
-        self._max_h = MAX_PHOTO_H
+        self._target_h = MAX_PHOTO_H
 
     # -- intestazione / piè di pagina (compatti, riga solo sotto al testo) --
     def _draw_header_footer(self):
@@ -122,21 +125,33 @@ class _Builder:
             half = maxw / 2 + 8
             c.line(self.W / 2 - half, self._foot_sep_y, self.W / 2 + half, self._foot_sep_y)
 
-    def new_page(self):
+    def new_page(self, chrome: bool = True):
         if self._started:
             self.c.showPage()
-        self._draw_header_footer()
-        self.y = self.content_top
+        if chrome:
+            self._draw_header_footer()
+            self.cur_top = self.content_top
+            self.cur_bottom = self.content_bottom
+        else:
+            # senza carta intestata: usa tutto il foglio (solo margine)
+            self.cur_top = self.H - MARGIN
+            self.cur_bottom = MARGIN
+        self.y = self.cur_top
         self._started = True
 
     # -- planimetria + coni ------------------------------------------------
-    def draw_plan(self, plan_img: Image.Image, ow: int, oh: int, medias: list[dict]):
+    def draw_plan(self, plan_img: Image.Image, ow: int, oh: int, medias: list[dict],
+                  full_page: bool = False):
         max_w = self.content_w
-        max_h = self.content_h * PLAN_MAX_HEIGHT_FRAC
+        avail_h = self.y - self.cur_bottom
+        max_h = avail_h if full_page else avail_h * PLAN_MAX_HEIGHT_FRAC
         s = min(max_w / ow, max_h / oh)
         draw_w, draw_h = ow * s, oh * s
         x0 = self.content_x0 + (self.content_w - draw_w) / 2
-        y0 = self.y - draw_h
+        if full_page:
+            y0 = self.cur_bottom + (avail_h - draw_h) / 2  # centrata nella pagina
+        else:
+            y0 = self.y - draw_h
         self.c.drawImage(ImageReader(plan_img), x0, y0, draw_w, draw_h)
 
         # px,py in pixel ORIGINALI della planimetria -> coordinate PDF
@@ -221,7 +236,7 @@ class _Builder:
             return
         row_h = max(h for _, _, h, _ in self._row)
         need = row_h + CAPTION_H
-        if self.y is None or self.y - need < self.content_bottom:
+        if self.y is None or self.y - need < self.cur_bottom:
             self.new_page()
         top = self.y
         x = self.content_x0
@@ -251,6 +266,8 @@ def build_pdf(
     orientation: str = "portrait",
     header_text: str = "",
     footer_text: str = "",
+    plan_full_page: bool = False,
+    plan_no_chrome: bool = False,
 ) -> bytes:
     """`groups`: lista ordinata di dict con:
         - "plan_path": Path | None  (immagine della planimetria, se presente)
@@ -258,6 +275,9 @@ def build_pdf(
     Ogni gruppo inizia su una nuova pagina; la planimetria non viene ripetuta
     sulle pagine successive dello stesso gruppo.
     `orientation`: "portrait" (verticale) o "landscape" (orizzontale).
+    `plan_full_page`: la planimetria occupa l'intera pagina (le foto vanno
+        nelle pagine successive).
+    `plan_no_chrome`: niente intestazione/piè nelle pagine con la planimetria.
     """
     pg = PAGE_SIZES.get(page_size, A4)
     pg = landscape(pg) if orientation == "landscape" else portrait(pg)
@@ -267,12 +287,19 @@ def build_pdf(
         medias = group["medias"]
         for i, m in enumerate(medias):
             m["_num"] = i + 1
-        b.new_page()
 
         plan_path = group.get("plan_path")
         plan_img, ow, oh = _load_plan(plan_path) if plan_path else (None, 0, 0)
-        if plan_img is not None:
-            b.draw_plan(plan_img, ow, oh, medias)
+        has_plan = plan_img is not None
+
+        # niente carta intestata solo nelle pagine che contengono la planimetria
+        chrome = not (plan_no_chrome and has_plan)
+        b.new_page(chrome=chrome)
+
+        if has_plan:
+            b.draw_plan(plan_img, ow, oh, medias, full_page=plan_full_page)
+            if plan_full_page:
+                b.y = b.cur_bottom  # forza le foto sulla pagina successiva
         else:
             b.c.setFont("Helvetica-Oblique", 10)
             b.c.setFillGray(0.4)
