@@ -823,9 +823,9 @@ $("pdfGenerate").onclick = async () => {
     .sort((a, b) => (a.taken_at || "").localeCompare(b.taken_at || "") || a.name.localeCompare(b.name))
     .map(p => p.name);
   const btn = $("pdfGenerate");
-  const old = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Generazione…";
+  $("pdfCancel").disabled = true;
+  $("pdfSpinner").classList.remove("hidden");
   try {
     const r = await api("/export_pdf", {
       method: "POST",
@@ -847,7 +847,8 @@ $("pdfGenerate").onclick = async () => {
     alert("Errore durante la generazione del PDF.");
   } finally {
     btn.disabled = false;
-    btn.textContent = old;
+    $("pdfCancel").disabled = false;
+    $("pdfSpinner").classList.add("hidden");
   }
 };
 $("addType").onclick = async () => {

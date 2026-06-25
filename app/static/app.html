@@ -97,7 +97,11 @@
   </aside>
 
 <div id="pdfModal" class="modal hidden">
-  <div class="modal-box" style="min-width:420px;max-width:560px">
+  <div class="modal-box" style="min-width:420px;max-width:560px;position:relative">
+    <div id="pdfSpinner" class="spinner-overlay hidden">
+      <div class="spinner"></div>
+      <div class="spinner-label">Generazione PDF in corso…</div>
+    </div>
     <h2>Esporta PDF</h2>
     <p id="pdfModalInfo" style="font-size:13px;color:#aaa;margin:0 0 12px"></p>
     <div class="pdf-field">
