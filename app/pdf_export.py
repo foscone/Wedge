@@ -142,21 +142,32 @@ class _Builder:
     # -- planimetria + coni ------------------------------------------------
     def draw_plan(self, plan_img: Image.Image, ow: int, oh: int, medias: list[dict],
                   full_page: bool = False):
-        max_w = self.content_w
-        avail_h = self.y - self.cur_bottom
-        max_h = avail_h if full_page else avail_h * PLAN_MAX_HEIGHT_FRAC
-        s = min(max_w / ow, max_h / oh)
-        draw_w, draw_h = ow * s, oh * s
-        x0 = self.content_x0 + (self.content_w - draw_w) / 2
-        if full_page:
-            y0 = self.cur_bottom + (avail_h - draw_h) / 2  # centrata nella pagina
+        plan_aspect = (ow / oh) if oh else 1.0
+        page_aspect = self.W / self.H
+        # Se la planimetria è a pagina intera e il suo rapporto coincide con
+        # quello del foglio (A4/A3 nell'orientamento scelto), riempi tutto il
+        # foglio senza alcun margine (full bleed).
+        full_bleed = full_page and abs(plan_aspect - page_aspect) <= 0.03 * page_aspect
+        if full_bleed:
+            x0, y0, draw_w, draw_h = 0.0, 0.0, self.W, self.H
         else:
-            y0 = self.y - draw_h
+            max_w = self.content_w
+            avail_h = self.y - self.cur_bottom
+            max_h = avail_h if full_page else avail_h * PLAN_MAX_HEIGHT_FRAC
+            s = min(max_w / ow, max_h / oh)
+            draw_w, draw_h = ow * s, oh * s
+            x0 = self.content_x0 + (self.content_w - draw_w) / 2
+            if full_page:
+                y0 = self.cur_bottom + (avail_h - draw_h) / 2  # centrata nella pagina
+            else:
+                y0 = self.y - draw_h
         self.c.drawImage(ImageReader(plan_img), x0, y0, draw_w, draw_h)
 
         # px,py in pixel ORIGINALI della planimetria -> coordinate PDF
+        sx, sy = draw_w / ow, draw_h / oh
+
         def to_pdf(px, py):
-            return (x0 + px * s, y0 + (oh - py) * s)
+            return (x0 + px * sx, y0 + (oh - py) * sy)
 
         cone_len = max(ow, oh) * CONE_FRAC
         for m in medias:
