@@ -28,7 +28,7 @@ EDGE = 0.55 * cm              # distanza intestazione/piè dal bordo
 GUTTER = 0.4 * cm             # spazio tra le foto
 CAPTION_H = 0.15 * cm         # piccolo respiro sotto ogni riga di foto
 MAX_PHOTO_H = 7 * cm          # altezza massima di una foto (foto più piccole = più file)
-CONE_FRAC = 0.12              # lunghezza cono = 12% del lato maggiore (come il frontend)
+CONE_FRAC = 0.08              # lunghezza cono = % del lato maggiore (più corto del frontend per leggibilità in stampa)
 PLAN_MAX_HEIGHT_FRAC = 0.55   # quota massima dell'area contenuto per la planimetria
 MAX_IMG_PX = 1800            # downscale delle immagini per tenere il PDF leggero
 
@@ -180,19 +180,19 @@ class _Builder:
         c.restoreState()
 
         ax, ay = pts[0]
-        self._badge(ax, ay, m["_num"])
+        self._badge(ax, ay, m["_num"], r=5)
 
-    def _badge(self, cx, cy, number: int):
+    def _badge(self, cx, cy, number: int, r: float = 7):
         c = self.c
-        r = 7
+        font_size = max(5.5, r * 1.1)
         c.saveState()
         c.setFillColorRGB(*COL_BADGE)
         c.setStrokeColorRGB(1, 1, 1)
-        c.setLineWidth(1)
+        c.setLineWidth(0.8)
         c.circle(cx, cy, r, fill=1, stroke=1)
         c.setFillColorRGB(1, 1, 1)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(cx, cy - 3, str(number))
+        c.setFont("Helvetica-Bold", font_size)
+        c.drawCentredString(cx, cy - font_size * 0.36, str(number))
         c.restoreState()
 
     # -- foto in righe ad altezza uniforme, impaccate (poco bianco) --------
