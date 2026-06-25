@@ -383,9 +383,16 @@ def make_video_thumb(src: Path, dst: Path) -> bool:
         return False
 
 
+def project_open_flags(project: sqlite3.Row) -> tuple[bool, bool]:
+    """(view_open, edit_open): un livello è 'aperto' se il progetto non ha
+    password per quel livello."""
+    return (not project["view_password_hash"], not project["edit_password_hash"])
+
+
 def project_for_request(slug: str, need: str, request: Request) -> sqlite3.Row:
     project = project_by_slug(slug)
-    require_project_level(request, slug, need)
+    view_open, edit_open = project_open_flags(project)
+    require_project_level(request, slug, need, view_open, edit_open)
     return project
 
 
@@ -482,9 +489,10 @@ def admin_create_project(request: Request, payload: dict = Body(...)):
         raise HTTPException(400, "root required")
     if "/" in root_name or "\\" in root_name or root_name in (".", "..") or root_name.startswith("."):
         raise HTTPException(400, "invalid root name")
-    if not view_password or not edit_password:
-        raise HTTPException(400, "both passwords required")
-    if view_password == edit_password:
+    # Le password sono opzionali: vuota = livello aperto (vedi
+    # project_open_flags / require_project_level). Se entrambe impostate,
+    # devono differire, altrimenti il login non saprebbe quale livello dare.
+    if view_password and edit_password and view_password == edit_password:
         raise HTTPException(400, "view and edit passwords must differ")
     root_p = PROJECTS_ROOT / root_name
     if not root_p.is_dir():
@@ -506,8 +514,8 @@ def admin_create_project(request: Request, payload: dict = Body(...)):
                     name,
                     photos_path,
                     plans_path,
-                    hash_password(view_password),
-                    hash_password(edit_password),
+                    hash_password(view_password) if view_password else "",
+                    hash_password(edit_password) if edit_password else "",
                 ),
             )
             c.commit()
@@ -641,7 +649,8 @@ def project_state(slug: str, request: Request):
         r["missing"] = r["name"] not in files
         r["tag_ids"] = tags_by_media.get(r["name"], [])
         r["notes"] = notes_by_media.get(r["name"], [])
-    granted = require_project_level(request, slug, "view")
+    view_open, edit_open = project_open_flags(project)
+    granted = require_project_level(request, slug, "view", view_open, edit_open)
     new_unplaced = [r for r in rows if r["status"] == "unplaced" and not r["missing"]]
     return {
         "project": {"slug": project["slug"], "name": project["name"]},

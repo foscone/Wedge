@@ -73,16 +73,38 @@ def require_admin(request: Request) -> None:
         raise HTTPException(401, "admin login required")
 
 
-def require_project_level(request: Request, slug: str, need: str) -> str:
-    """need: 'view' or 'edit'. Returns the actual granted level."""
+def _rank(level: Optional[str]) -> int:
+    return {"edit": 2, "view": 1}.get(level or "", 0)
+
+
+def require_project_level(
+    request: Request,
+    slug: str,
+    need: str,
+    view_open: bool = False,
+    edit_open: bool = False,
+) -> str:
+    """need: 'view' or 'edit'. Returns the actual granted level.
+
+    `view_open`/`edit_open` indicano che il progetto non ha password per quel
+    livello: la visualizzazione senza password è aperta a tutti; la modifica
+    senza password è aperta a chiunque possa già visualizzare.
+    """
     s = load_session(request)
     projects = s.get("projects", {}) or {}
     have = projects.get(slug)
     if have not in ("view", "edit"):
+        have = None
+    level = have
+    if view_open and _rank(level) < _rank("view"):
+        level = "view"
+    if edit_open and _rank(level) >= _rank("view"):
+        level = "edit"
+    if _rank(level) >= _rank(need):
+        return level
+    if _rank(level) == 0:
         raise HTTPException(401, "project login required")
-    if need == "edit" and have != "edit":
-        raise HTTPException(403, "edit access required")
-    return have
+    raise HTTPException(403, "edit access required")
 
 
 def grant_project_access(session: dict, slug: str, level: str) -> dict:

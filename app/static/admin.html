@@ -52,10 +52,12 @@
           </small>
         </label>
         <label>Password di visualizzazione
-          <input id="newViewPw" type="text" required>
+          <input id="newViewPw" type="text" autocomplete="off">
+          <small class="muted">Lascia vuoto = visualizzazione aperta a tutti senza password.</small>
         </label>
         <label>Password di modifica
-          <input id="newEditPw" type="text" required>
+          <input id="newEditPw" type="text" autocomplete="off">
+          <small class="muted">Lascia vuoto = chi può visualizzare può anche modificare.</small>
         </label>
         <button type="submit">Crea progetto</button>
         <div id="createErr" class="error hidden"></div>
