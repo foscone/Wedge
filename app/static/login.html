@@ -42,9 +42,15 @@
     const data = await r.json();
     const proj = (data.projects || []).find(p => p.slug === slug);
     if (proj) document.getElementById('title').textContent = 'Accesso · ' + proj.name;
-    if (data.granted && data.granted[slug]) {
+    const lvl = data.granted && data.granted[slug];
+    if (lvl === 'edit' || (lvl === 'view' && !(proj && proj.edit_locked))) {
       location.href = pickTarget();
       return;
+    }
+    if (lvl === 'view') {
+      document.getElementById('hint').innerHTML =
+        'Hai già accesso in sola visualizzazione. Inserisci la password di modifica per modificare, ' +
+        'oppure <a href="' + pickTarget() + '">continua in sola visualizzazione</a>.';
     }
   } catch (e) {}
   const form = document.getElementById('form');

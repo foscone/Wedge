@@ -64,6 +64,9 @@ function applyLevelToUI() {
   // hide place-only controls when read-only
   document.body.classList.toggle("view-only", !edit);
   $("modePlace").style.display = edit ? "" : "none";
+  const el = $("btnEditLogin");
+  el.href = LOGIN_URL + "?next=" + encodeURIComponent(location.pathname + location.search);
+  el.classList.toggle("hidden", edit);
   if (!edit && mode === "place") setMode("view");
 }
 

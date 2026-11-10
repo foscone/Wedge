@@ -77,6 +77,20 @@ def _rank(level: Optional[str]) -> int:
     return {"edit": 2, "view": 1}.get(level or "", 0)
 
 
+def effective_level(
+    session: dict, slug: str, view_open: bool = False, edit_open: bool = False
+) -> Optional[str]:
+    """Livello effettivo per il progetto: quello ottenuto col login, alzato
+    se il progetto non ha password per un livello."""
+    have = (session.get("projects", {}) or {}).get(slug)
+    level = have if have in ("view", "edit") else None
+    if view_open and _rank(level) < _rank("view"):
+        level = "view"
+    if edit_open and _rank(level) >= _rank("view"):
+        level = "edit"
+    return level
+
+
 def require_project_level(
     request: Request,
     slug: str,
@@ -90,16 +104,7 @@ def require_project_level(
     livello: la visualizzazione senza password è aperta a tutti; la modifica
     senza password è aperta a chiunque possa già visualizzare.
     """
-    s = load_session(request)
-    projects = s.get("projects", {}) or {}
-    have = projects.get(slug)
-    if have not in ("view", "edit"):
-        have = None
-    level = have
-    if view_open and _rank(level) < _rank("view"):
-        level = "view"
-    if edit_open and _rank(level) >= _rank("view"):
-        level = "edit"
+    level = effective_level(load_session(request), slug, view_open, edit_open)
     if _rank(level) >= _rank(need):
         return level
     if _rank(level) == 0:

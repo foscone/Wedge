@@ -17,6 +17,7 @@ from PIL import ExifTags, Image, ImageOps
 from .pdf_export import build_pdf
 from .auth import (
     clear_session,
+    effective_level,
     grant_project_access,
     hash_password,
     load_session,
@@ -416,12 +417,21 @@ STATIC_DIR = Path(__file__).parent / "static"
 def get_session(request: Request):
     s = load_session(request)
     with db() as c:
-        rows = c.execute("SELECT slug, name FROM projects ORDER BY name").fetchall()
-    projects = [dict(r) for r in rows]
+        rows = c.execute(
+            "SELECT slug, name, view_password_hash, edit_password_hash FROM projects ORDER BY name"
+        ).fetchall()
+    projects = []
+    granted = {}
+    for r in rows:
+        view_open, edit_open = project_open_flags(r)
+        projects.append({"slug": r["slug"], "name": r["name"], "edit_locked": not edit_open})
+        lvl = effective_level(s, r["slug"], view_open, edit_open)
+        if lvl:
+            granted[r["slug"]] = lvl
     return {
         "admin": bool(s.get("admin")),
         "projects": projects,
-        "granted": s.get("projects") or {},
+        "granted": granted,
     }
 
 
